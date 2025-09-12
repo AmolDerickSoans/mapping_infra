@@ -193,16 +193,20 @@
 /* Revamped Legend Panel */
 .legend-panel {
   position: absolute;
-  bottom: 20px;
+  bottom: 80px; /* Moved up to avoid overlapping with footer */
   right: 20px;
   background-color: rgba(255, 255, 255, 0.9);
   padding: 20px;
   border-radius: 12px;
   z-index: 100;
   backdrop-filter: blur(10px);
-  width: 250px;
+  width: 250px; /* Restored original width */
   color: #000000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  height: 35vh; /* Set height to 35% of viewport height */
+  overflow-y: auto; /* Make it scrollable */
+  display: flex;
+  flex-direction: column;
 }
 
 .dark .legend-panel {
@@ -238,6 +242,8 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
+  overflow-y: auto; /* Make grid scrollable */
+  flex: 1; /* Take remaining space */
 }
 
 .legend-item {
@@ -293,6 +299,7 @@
   margin-top: 15px;
   padding-top: 15px;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
+  flex-shrink: 0; /* Prevent section from shrinking */
 }
 
 .dark .legend-section {
@@ -335,6 +342,7 @@ body {
   margin: 0;
   padding: 0;
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  overflow-y: hidden;
 }
 
 .dark body {
@@ -497,6 +505,26 @@ body {
   filter: none;
 }
 
+.footer-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.nvidia-badge {
+  height: 24px;
+  width: auto;
+  max-width: 120px;
+  object-fit: contain;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.nvidia-badge:hover {
+  opacity: 1;
+}
+
 .footer-text {
   font-size: 0.875rem;
   color: #6b7280;
@@ -538,6 +566,119 @@ body {
 .dark .footer-link:hover {
   background-color: rgba(255, 255, 255, 0.1);
   color: #d1d5db;
+}
+
+/* Header styles */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px);
+  z-index: 1000;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.dark .header {
+  background-color: rgba(18, 18, 18, 0.98);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+.header-logo {
+  height: 28px;
+  width: auto;
+  max-width: 100px;
+  object-fit: contain;
+  filter: invert(1);
+}
+
+.dark .header-logo {
+  filter: none;
+}
+
+.header-nav {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #374151;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #1f2937;
+}
+
+.dark .nav-link {
+  color: #d1d5db;
+}
+
+.dark .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #f9fafb;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+}
+
+.theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #374151;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  width: 40px;
+  height: 40px;
+}
+
+.theme-toggle:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+.dark .theme-toggle {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #d1d5db;
+}
+
+.dark .theme-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 /* Adjust map container to account for header and footer */

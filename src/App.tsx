@@ -5,6 +5,7 @@ import { ScatterplotLayer, PathLayer } from '@deck.gl/layers';
 import './App.css';
 import type { PowerPlant } from './models/PowerPlant';
 import type { Cable } from './models/Cable';
+import type { TerrestrialLink } from './models/TerrestrialLink';
 import { loadInfrastructureData } from './utils/dataLoader';
 import { loadWfsCableData } from './utils/wfsDataLoader';
 import { loadAndProcessPowerPlants } from './utils/powerPlantProcessor';
@@ -49,8 +50,8 @@ function App() {
   const [hoverInfo, setHoverInfo] = useState<any>(null);
   // State for filtering power plants by source
   const [filteredSources, setFilteredSources] = useState<Set<string>>(new Set());
-  // State for energy size scaling
-  const [energySizeScale, setEnergySizeScale] = useState<number>(15);
+  // State for energy size scaling (adjusted for the data range)
+  const [energySizeScale, setEnergySizeScale] = useState<number>(0.8);
 
   // Toggle source filter
   const toggleSourceFilter = (source: string) => {
@@ -117,7 +118,7 @@ function App() {
       radiusMinPixels: 2,
       radiusMaxPixels: 40,
       getPosition: (d: PowerPlant) => d.coordinates,
-      getRadius: (d: PowerPlant) => Math.sqrt(d.output) * energySizeScale / 10, // Use energy size scale
+      getRadius: (d: PowerPlant) => Math.sqrt(d.output) * energySizeScale, // Use energy size scale
       getFillColor: (d: PowerPlant) => {
         const source = d.source;
         return POWER_PLANT_COLORS[source] || POWER_PLANT_COLORS.other;
@@ -216,15 +217,18 @@ function App() {
         <div className="control-section">
           <h3>Energy Size</h3>
           <div className="slider-container">
+            <span className="slider-label">Small</span>
             <input
               type="range"
-              min="5"
-              max="30"
+              min="0.1"
+              max="2"
+              step="0.1"
               value={energySizeScale}
               onChange={(e) => setEnergySizeScale(Number(e.target.value))}
               className="energy-slider"
             />
-            <span className="slider-value">{energySizeScale}</span>
+            <span className="slider-label">Large</span>
+            <span className="slider-value">{energySizeScale.toFixed(1)}</span>
           </div>
         </div>
       </div>

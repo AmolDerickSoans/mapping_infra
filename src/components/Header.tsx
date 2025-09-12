@@ -16,11 +16,11 @@ const Header: React.FC = () => {
           />
         </div>
         <nav className="header-nav">
-          <a href="#" className="nav-link">
+          <a href="https://www.heliosenergy.io/" className="nav-link" target="_blank" rel="noopener noreferrer">
             <Globe size={18} />
             <span>Site</span>
           </a>
-          <a href="#" className="nav-link">
+          <a href="https://console.heliosenergy.io/login?tab=signup" className="nav-link" target="_blank" rel="noopener noreferrer">
             <Settings size={18} />
             <span>Console</span>
           </a>

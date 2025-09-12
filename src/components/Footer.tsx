@@ -13,6 +13,13 @@ const Footer: React.FC = () => {
           />
           <span className="footer-text">&copy; 2025 All rights reserved.</span>
         </div>
+        <div className="footer-center">
+          <img
+            src="/nvidia-inception-program-badge-rgb-for-screen.png"
+            alt="NVIDIA Inception Program"
+            className="nvidia-badge"
+          />
+        </div>
         <div className="footer-links">
           <a href="#" className="footer-link">
             <Shield size={16} />
