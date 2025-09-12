@@ -1,0 +1,27 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/wfs/(.*)",
+      "destination": "/api/wfs/[...path].ts"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/wfs/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type"
+        }
+      ]
+    }
+  ]
+}

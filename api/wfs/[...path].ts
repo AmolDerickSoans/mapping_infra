@@ -1,23 +1,29 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import fetch from 'node-fetch';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Get the path parameters
-  const { path } = req.query;
-  
-  // Validate path
-  if (!path || !Array.isArray(path)) {
-    return res.status(400).json({ error: 'Invalid path' });
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return res.status(200).end();
   }
-  
+
   try {
+    // Extract query parameters from the request
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(req.query)) {
+      if (key !== 'path') {
+        query.append(key, value as string);
+      }
+    }
+    
     // Construct the ITU service URL
-    const ituPath = path.join('/');
-    const ituUrl = `https://bbmaps.itu.int/geoserver/itu-geocatalogue/ows${ituPath}${req.url?.split('?')[1] ? `?${req.url.split('?')[1]}` : ''}`;
+    const ituUrl = `https://bbmaps.itu.int/geoserver/itu-geocatalogue/ows?${query.toString()}`;
     
     // Forward the request to ITU service
     const response = await fetch(ituUrl, {
-      method: req.method,
+      method: 'GET',
       headers: {
         'User-Agent': 'Mapping-Infra-App/1.0',
         'Accept': 'application/json,*/*',
@@ -27,15 +33,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Get the response data
     const data = await response.text();
     
-    // Set CORS headers to allow requests from your frontend
+    // Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    
-    // Handle preflight requests
-    if (req.method === 'OPTIONS') {
-      return res.status(200).end();
-    }
     
     // Set the appropriate content type based on the ITU response
     const contentType = response.headers.get('content-type');
