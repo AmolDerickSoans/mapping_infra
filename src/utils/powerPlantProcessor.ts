@@ -57,6 +57,7 @@ export async function loadAndProcessPowerPlants(): Promise<PowerPlant[]> {
         source: cleanSource || 'other',
         // This is the most important part for mapping: [longitude, latitude]
         coordinates: [cleanLng, cleanLat],
+        country: 'CA' // Add country field for Canadian plants
       });
     }
   }

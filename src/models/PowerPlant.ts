@@ -5,4 +5,5 @@ export interface PowerPlant {
   outputDisplay: string;
   source: string;
   coordinates: [number, number]; // [longitude, latitude]
+  country: 'CA' | 'US'; // New field to identify country
 }

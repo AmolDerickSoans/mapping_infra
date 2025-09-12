@@ -26,7 +26,8 @@ export function parsePowerPlantCSV(csvData: string): PowerPlant[] {
       output: Number(entry.output) || 0,
       outputDisplay: entry.outputDisplay || `${entry.output} MW`,
       source: entry.source || 'Other',
-      coordinates: coords
+      coordinates: coords,
+      country: 'US' as const
     };
   });
 }

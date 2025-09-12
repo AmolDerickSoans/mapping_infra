@@ -1,7 +1,8 @@
+import { describe, it, expect } from 'vitest';
 import { processWfsCableData } from './geoJsonParser';
 
 // Mock test data
-const mockWfsData = {
+const mockWfsData: any = {
   "type": "FeatureCollection",
   "features": [
     {
@@ -53,7 +54,7 @@ describe('processWfsCableData', () => {
   });
 
   it('should handle missing properties', () => {
-    const testData = {
+    const testData: any = {
       "type": "FeatureCollection",
       "features": [
         {

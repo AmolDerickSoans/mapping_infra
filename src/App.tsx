@@ -5,10 +5,10 @@ import { ScatterplotLayer, PathLayer } from '@deck.gl/layers';
 import './App.css';
 import type { PowerPlant } from './models/PowerPlant';
 import type { Cable } from './models/Cable';
-import type { TerrestrialLink } from './models/TerrestrialLink';
 import { loadInfrastructureData } from './utils/dataLoader';
 import { loadWfsCableData } from './utils/wfsDataLoader';
 import { loadAndProcessPowerPlants } from './utils/powerPlantProcessor';
+import { loadAndProcessAmericanPowerPlants } from './utils/americanPowerPlantProcessor';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -52,6 +52,9 @@ function App() {
   const [filteredSources, setFilteredSources] = useState<Set<string>>(new Set());
   // State for energy size scaling (adjusted for the data range)
   const [energySizeScale, setEnergySizeScale] = useState<number>(0.8);
+  // State for country filtering
+  const [showCanadianPlants, setShowCanadianPlants] = useState<boolean>(true);
+  const [showAmericanPlants, setShowAmericanPlants] = useState<boolean>(true);
 
   // Toggle source filter
   const toggleSourceFilter = (source: string) => {
@@ -72,8 +75,14 @@ function App() {
       setLoading(true);
       
       try {
-        // Load power plant data using the new processor
-        const powerPlantData = await loadAndProcessPowerPlants();
+        // Load Canadian power plant data
+        const canadianPowerPlantData = await loadAndProcessPowerPlants();
+        
+        // Load American power plant data
+        const americanPowerPlantData = await loadAndProcessAmericanPowerPlants();
+        
+        // Combine both datasets
+        const powerPlantData = [...canadianPowerPlantData, ...americanPowerPlantData];
         
         // Load infrastructure data
         const infrastructureData = await loadInfrastructureData('/data/infrastructure.geojson');
@@ -99,10 +108,18 @@ function App() {
     loadData();
   }, []);
 
-  // Filter power plants based on selected sources
-  const filteredPowerPlants = powerPlants.filter(plant => 
-    filteredSources.has(plant.source) || plant.source === 'other'
-  );
+  // Filter power plants based on selected sources and countries
+  const filteredPowerPlants = powerPlants.filter(plant => {
+    // Existing source filtering
+    const passesSourceFilter = filteredSources.has(plant.source) || plant.source === 'other';
+    
+    // New country filtering
+    const passesCountryFilter = 
+      (showCanadianPlants && plant.country === 'CA') || 
+      (showAmericanPlants && plant.country === 'US');
+    
+    return passesSourceFilter && passesCountryFilter;
+  });
   
   // Get all unique sources from the data for the legend
   const allSourcesInData = Array.from(new Set(powerPlants.map(plant => plant.source))).sort();
@@ -211,6 +228,24 @@ function App() {
               <span className="checkmark"></span>
               ITU Cable Systems
             </label>
+          </div>
+        </div>
+        
+        <div className="control-section">
+          <h3>Countries</h3>
+          <div className="country-filter">
+            <button 
+              className={`country-button ${showCanadianPlants ? 'active' : 'inactive'}`}
+              onClick={() => setShowCanadianPlants(!showCanadianPlants)}
+            >
+              <div className="flag-icon">🇨🇦</div>
+            </button>
+            <button 
+              className={`country-button ${showAmericanPlants ? 'active' : 'inactive'}`}
+              onClick={() => setShowAmericanPlants(!showAmericanPlants)}
+            >
+              <div className="flag-icon">🇺🇸</div>
+            </button>
           </div>
         </div>
         
