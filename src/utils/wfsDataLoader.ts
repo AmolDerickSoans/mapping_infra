@@ -66,10 +66,8 @@ const testCables: any = {
  */
 export async function loadWfsCableData(): Promise<Cable[]> {
   try {
-    const isDevelopment = import.meta.env.MODE === 'development';
-    const baseUrl = isDevelopment 
-      ? '/itu-proxy/geoserver/itu-geocatalogue/ows'
-      : 'https://bbmaps.itu.int/geoserver/itu-geocatalogue/ows';
+    // Use Vercel API route for proxying requests in both development and production
+    const baseUrl = '/api/wfs/geoserver/itu-geocatalogue/ows';
     
     const params = new URLSearchParams({
       service: 'WFS',
@@ -80,7 +78,16 @@ export async function loadWfsCableData(): Promise<Cable[]> {
     });
     
     const url = `${baseUrl}?${params}`;
-    const response = await fetch(url);
+    
+    // Add a timeout to prevent hanging requests
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
+    const response = await fetch(url, {
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
       throw new Error(`Failed to fetch submarine cable data: ${response.status} ${response.statusText}`);

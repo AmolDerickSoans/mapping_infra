@@ -33,7 +33,9 @@ export async function loadInfrastructureData(geoJsonFilePath: string): Promise<{
   terrestrialLinks: TerrestrialLink[];
 }> {
   try {
-    const response = await fetch(geoJsonFilePath);
+    // Use BASE_URL to ensure correct path resolution in both development and production
+    const fullPath = `${import.meta.env.BASE_URL}${geoJsonFilePath.startsWith('/') ? geoJsonFilePath.slice(1) : geoJsonFilePath}`;
+    const response = await fetch(fullPath);
     if (!response.ok) {
       throw new Error(`Failed to load infrastructure data: ${response.statusText}`);
     }

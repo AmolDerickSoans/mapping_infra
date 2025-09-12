@@ -20,5 +20,7 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: true
-  }
+  },
+  // Ensure assets are loaded correctly in production
+  base: './'
 })

@@ -5,6 +5,7 @@ import { ScatterplotLayer, PathLayer } from '@deck.gl/layers';
 import './App.css';
 import type { PowerPlant } from './models/PowerPlant';
 import type { Cable } from './models/Cable';
+import type { TerrestrialLink } from './models/TerrestrialLink';
 import { loadInfrastructureData } from './utils/dataLoader';
 import { loadWfsCableData } from './utils/wfsDataLoader';
 import { loadAndProcessPowerPlants } from './utils/powerPlantProcessor';
@@ -42,10 +43,12 @@ function App() {
   const { theme } = useTheme();
   const [powerPlants, setPowerPlants] = useState<PowerPlant[]>([]);
   const [cables, setCables] = useState<Cable[]>([]);
+  const [terrestrialLinks, setTerrestrialLinks] = useState<TerrestrialLink[]>([]);
   const [wfsCables, setWfsCables] = useState<Cable[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [showPowerPlants, setShowPowerPlants] = useState<boolean>(true);
   const [showCables, setShowCables] = useState<boolean>(true);
+  const [showTerrestrialLinks, setShowTerrestrialLinks] = useState<boolean>(true); // Add this line
   const [showWfsCables, setShowWfsCables] = useState<boolean>(true);
   const [hoverInfo, setHoverInfo] = useState<any>(null);
   // State for filtering power plants by source
@@ -92,6 +95,7 @@ function App() {
         
         setPowerPlants(powerPlantData);
         setCables(infrastructureData.cables);
+        setTerrestrialLinks(infrastructureData.terrestrialLinks);
         setWfsCables(wfsCableData);
         
         // Initialize filtered sources with all unique sources from the data
@@ -124,6 +128,9 @@ function App() {
   // Get all unique sources from the data for the legend
   const allSourcesInData = Array.from(new Set(powerPlants.map(plant => plant.source))).sort();
 
+  // Define a color for terrestrial links
+  const TERRESTRIAL_LINK_COLOR: [number, number, number] = [0, 255, 0]; // Green color
+
   // Define layer visibility
   const layers = [
     showPowerPlants && new ScatterplotLayer({
@@ -151,6 +158,17 @@ function App() {
       getPath: (d: Cable) => d.coordinates,
       getColor: CABLE_COLOR, // Orange color
       getWidth: 2, // Thinner cables
+      onHover: (info: any) => setHoverInfo(info.object)
+    }),
+    // Add a layer for terrestrial links with visibility control
+    showTerrestrialLinks && new PathLayer({
+      id: 'terrestrial-links',
+      data: terrestrialLinks,
+      pickable: true,
+      widthMinPixels: 1,
+      getPath: (d: TerrestrialLink) => d.coordinates,
+      getColor: TERRESTRIAL_LINK_COLOR, // Green color
+      getWidth: 2,
       onHover: (info: any) => setHoverInfo(info.object)
     }),
     showWfsCables && new PathLayer({
@@ -218,6 +236,16 @@ function App() {
               />
               <span className="checkmark"></span>
               Cables
+            </label>
+            {/* Add checkbox for terrestrial links */}
+            <label className="checkbox-item">
+              <input
+                type="checkbox"
+                checked={showTerrestrialLinks}
+                onChange={() => setShowTerrestrialLinks(!showTerrestrialLinks)}
+              />
+              <span className="checkmark"></span>
+              Terrestrial Links
             </label>
             <label className="checkbox-item">
               <input
@@ -316,6 +344,11 @@ function App() {
           <div className="legend-item">
             <div className="legend-color" style={{ backgroundColor: `rgb(${CABLE_COLOR.join(',')})` }}></div>
             <span className="legend-label">Submarine Cables</span>
+          </div>
+          {/* Add legend item for terrestrial links */}
+          <div className="legend-item">
+            <div className="legend-color" style={{ backgroundColor: `rgb(${TERRESTRIAL_LINK_COLOR.join(',')})` }}></div>
+            <span className="legend-label">Terrestrial Links</span>
           </div>
         </div>
       </div>
