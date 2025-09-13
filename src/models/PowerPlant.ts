@@ -5,5 +5,7 @@ export interface PowerPlant {
   outputDisplay: string;
   source: string;
   coordinates: [number, number]; // [longitude, latitude]
-  country: 'CA' | 'US'; // New field to identify country
+  country: 'CA' | 'US';
+  // Additional fields for hover panel
+  rawData?: Record<string, string>; // Store all original CSV fields
 }

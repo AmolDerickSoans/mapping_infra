@@ -8,8 +8,7 @@ import type { Cable } from './models/Cable';
 import type { TerrestrialLink } from './models/TerrestrialLink';
 import { loadInfrastructureData } from './utils/dataLoader';
 import { loadWfsCableData } from './utils/wfsDataLoader';
-import { loadAndProcessPowerPlants } from './utils/powerPlantProcessor';
-import { loadAndProcessAmericanPowerPlants } from './utils/americanPowerPlantProcessor';
+import { loadAndProcessAllPowerPlants } from './utils/unifiedPowerPlantProcessor';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -42,19 +41,17 @@ const CABLE_COLOR: [number, number, number] = [255, 165, 0]; // Orange color
 function App() {
   const { theme } = useTheme();
   const [powerPlants, setPowerPlants] = useState<PowerPlant[]>([]);
-  const [cables, setCables] = useState<Cable[]>([]);
   const [terrestrialLinks, setTerrestrialLinks] = useState<TerrestrialLink[]>([]);
   const [wfsCables, setWfsCables] = useState<Cable[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [showPowerPlants, setShowPowerPlants] = useState<boolean>(true);
-  const [showCables, setShowCables] = useState<boolean>(true);
-  const [showTerrestrialLinks, setShowTerrestrialLinks] = useState<boolean>(true); // Add this line
+  const [showTerrestrialLinks, setShowTerrestrialLinks] = useState<boolean>(true);
   const [showWfsCables, setShowWfsCables] = useState<boolean>(true);
   const [hoverInfo, setHoverInfo] = useState<any>(null);
   // State for filtering power plants by source
   const [filteredSources, setFilteredSources] = useState<Set<string>>(new Set());
   // State for energy size scaling (adjusted for the data range)
-  const [energySizeScale, setEnergySizeScale] = useState<number>(0.8);
+  const [energySizeScale, setEnergySizeScale] = useState<number>(1);
   // State for country filtering
   const [showCanadianPlants, setShowCanadianPlants] = useState<boolean>(true);
   const [showAmericanPlants, setShowAmericanPlants] = useState<boolean>(true);
@@ -78,23 +75,16 @@ function App() {
       setLoading(true);
       
       try {
-        // Load Canadian power plant data
-        const canadianPowerPlantData = await loadAndProcessPowerPlants();
+        // Load all power plant data using the new unified processor
+        const powerPlantData = await loadAndProcessAllPowerPlants();
         
-        // Load American power plant data
-        const americanPowerPlantData = await loadAndProcessAmericanPowerPlants();
-        
-        // Combine both datasets
-        const powerPlantData = [...canadianPowerPlantData, ...americanPowerPlantData];
-        
-        // Load infrastructure data
+        // Load infrastructure data (unchanged)
         const infrastructureData = await loadInfrastructureData('/data/infrastructure.geojson');
         
-        // Load WFS submarine cable data
+        // Load WFS submarine cable data (unchanged)
         const wfsCableData = await loadWfsCableData();
         
         setPowerPlants(powerPlantData);
-        setCables(infrastructureData.cables);
         setTerrestrialLinks(infrastructureData.terrestrialLinks);
         setWfsCables(wfsCableData);
         
@@ -142,23 +132,21 @@ function App() {
       radiusMinPixels: 2,
       radiusMaxPixels: 40,
       getPosition: (d: PowerPlant) => d.coordinates,
-      getRadius: (d: PowerPlant) => Math.sqrt(d.output) * energySizeScale, // Use energy size scale
+      // Improved scaling algorithm that works better with the wide range of power outputs
+      getRadius: (d: PowerPlant) => {
+        // Logarithmic scaling to handle the wide range of outputs (1MW to 6000+ MW)
+        // This will make the slider more effective across the entire range
+        const logOutput = Math.log10(Math.max(d.output, 1)); // log10(1) = 0, log10(1000) = 3, etc.
+        // Scale the log output to a reasonable range (0 to 10) then multiply by slider value
+        const scaledOutput = (logOutput / 4) * 10; // 4 is roughly log10(10000), gives us a 0-10 range
+        return Math.max(2, Math.min(40, scaledOutput * energySizeScale));
+      },
       getFillColor: (d: PowerPlant) => {
         const source = d.source;
         return POWER_PLANT_COLORS[source] || POWER_PLANT_COLORS.other;
       },
       onHover: (info: any) => setHoverInfo(info.object),
       onClick: (info: any) => console.log('Clicked:', info.object)
-    }),
-    showCables && new PathLayer({
-      id: 'cables',
-      data: cables,
-      pickable: true,
-      widthMinPixels: 1, // Thinner cables
-      getPath: (d: Cable) => d.coordinates,
-      getColor: CABLE_COLOR, // Orange color
-      getWidth: 2, // Thinner cables
-      onHover: (info: any) => setHoverInfo(info.object)
     }),
     // Add a layer for terrestrial links with visibility control
     showTerrestrialLinks && new PathLayer({
@@ -228,15 +216,6 @@ function App() {
               <span className="checkmark"></span>
               Power Plants
             </label>
-            <label className="checkbox-item">
-              <input
-                type="checkbox"
-                checked={showCables}
-                onChange={() => setShowCables(!showCables)}
-              />
-              <span className="checkmark"></span>
-              Cables
-            </label>
             {/* Add checkbox for terrestrial links */}
             <label className="checkbox-item">
               <input
@@ -254,7 +233,7 @@ function App() {
                 onChange={() => setShowWfsCables(!showWfsCables)}
               />
               <span className="checkmark"></span>
-              ITU Cable Systems
+              Terrestrial Links (ITU)
             </label>
           </div>
         </div>
@@ -278,20 +257,21 @@ function App() {
         </div>
         
         <div className="control-section">
-          <h3>Energy Size</h3>
+          <h3>Power Output</h3>
           <div className="slider-container">
-            <span className="slider-label">Small</span>
+            <span className="slider-label">1MW</span>
+            {/* Adjusted slider range for better control */}
             <input
               type="range"
-              min="0.1"
-              max="2"
+              min="0.5"
+              max="5"
               step="0.1"
               value={energySizeScale}
               onChange={(e) => setEnergySizeScale(Number(e.target.value))}
               className="energy-slider"
             />
-            <span className="slider-label">Large</span>
-            <span className="slider-value">{energySizeScale.toFixed(1)}</span>
+            <span className="slider-label">1000MW</span>
+            <span className="slider-value">{energySizeScale.toFixed(1)}x</span>
           </div>
         </div>
       </div>
@@ -341,9 +321,10 @@ function App() {
         
         <div className="legend-section">
           <h4>Infrastructure</h4>
+          {/* Update legend labels */}
           <div className="legend-item">
             <div className="legend-color" style={{ backgroundColor: `rgb(${CABLE_COLOR.join(',')})` }}></div>
-            <span className="legend-label">Submarine Cables</span>
+            <span className="legend-label">Terrestrial Links (ITU)</span>
           </div>
           {/* Add legend item for terrestrial links */}
           <div className="legend-item">
@@ -353,12 +334,26 @@ function App() {
         </div>
       </div>
       
-      {/* Info Panel */}
+      {/* Enhanced Info Panel */}
       {hoverInfo && (
         <div className="info-panel">
           <h3>{hoverInfo.name}</h3>
-          {hoverInfo.outputDisplay && <p>Output: {hoverInfo.outputDisplay}</p>}
-          {hoverInfo.source && <p>Source: {hoverInfo.source}</p>}
+          <p>Output: {hoverInfo.outputDisplay}</p>
+          <p>Source: {hoverInfo.source}</p>
+          
+          {/* Additional details from rawData */}
+          {hoverInfo.rawData && (
+            <>
+              {hoverInfo.rawData['City (Site Name)'] && <p>City: {hoverInfo.rawData['City (Site Name)']}</p>}
+              {hoverInfo.rawData['State / Province / Territory'] && <p>State/Province: {hoverInfo.rawData['State / Province / Territory']}</p>}
+              {hoverInfo.rawData['County'] && <p>County: {hoverInfo.rawData['County']}</p>}
+              {hoverInfo.rawData['Owner Name (Company)'] && <p>Owner: {hoverInfo.rawData['Owner Name (Company)']}</p>}
+              {hoverInfo.rawData['Operator Name'] && <p>Operator: {hoverInfo.rawData['Operator Name']}</p>}
+              {hoverInfo.rawData['Address'] && <p>Address: {hoverInfo.rawData['Address']}</p>}
+              {hoverInfo.rawData['Zip Code / Postal Code'] && <p>Postal Code: {hoverInfo.rawData['Zip Code / Postal Code']}</p>}
+              <p>Coordinates: {hoverInfo.coordinates[1].toFixed(4)}, {hoverInfo.coordinates[0].toFixed(4)}</p>
+            </>
+          )}
         </div>
       )}
     </div>
