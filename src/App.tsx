@@ -58,12 +58,13 @@ function App() {
   const [showAmericanPlants, setShowAmericanPlants] = useState<boolean>(true);
   // State for proximity filtering
   const [showOnlyNearbyPlants, setShowOnlyNearbyPlants] = useState<boolean>(false);
-  // State for proximity dropdown and distance
-  const [isProximityDropdownOpen, setIsProximityDropdownOpen] = useState<boolean>(false);
-  const [proximityDistance, setProximityDistance] = useState<number>(10); // Default to 10 miles
-  // State for accordion sections
-  const [isLayersSectionOpen, setIsLayersSectionOpen] = useState<boolean>(true);
-  const [isCountriesSectionOpen, setIsCountriesSectionOpen] = useState<boolean>(true);
+  // State for proximity distance
+  const [proximityDistance, setProximityDistance] = useState<number>(0); // Changed from 10 to 0 miles
+  // State for accordion sections - all minimized by default
+  const [isLayersSectionOpen, setIsLayersSectionOpen] = useState<boolean>(false);
+  const [isCountriesSectionOpen, setIsCountriesSectionOpen] = useState<boolean>(false);
+  const [isPowerOutputSectionOpen, setIsPowerOutputSectionOpen] = useState<boolean>(false);
+  const [isNearbyPlantsSectionOpen, setIsNearbyPlantsSectionOpen] = useState<boolean>(false);
 
   // Toggle source filter
   const toggleSourceFilter = (source: string) => {
@@ -124,15 +125,27 @@ function App() {
     // New power output range filtering
     const passesPowerOutputFilter = plant.output >= minPowerOutput && plant.output <= maxPowerOutput;
 
-    // New "nearby plants" filtering
+    // New "nearby plants" filtering - check against both terrestrial links and submarine cables
     let passesNearbyFilter = true;
-    if (showOnlyNearbyPlants && terrestrialLinks.length > 0) {
-      // Check if plant is within specified distance of any terrestrial link
+    if (showOnlyNearbyPlants && (terrestrialLinks.length > 0 || wfsCables.length > 0)) {
+      // Check if plant is within specified distance of any terrestrial link or submarine cable
       passesNearbyFilter = false;
+      
+      // Check terrestrial links
       for (const link of terrestrialLinks) {
-        if (isPointNearLine(plant.coordinates, link.coordinates, proximityDistance)) { // Use dynamic distance
+        if (isPointNearLine(plant.coordinates, link.coordinates, proximityDistance)) {
           passesNearbyFilter = true;
           break;
+        }
+      }
+      
+      // If not near terrestrial links, check submarine cables
+      if (!passesNearbyFilter) {
+        for (const cable of wfsCables) {
+          if (isPointNearLine(plant.coordinates, cable.coordinates, proximityDistance)) {
+            passesNearbyFilter = true;
+            break;
+          }
         }
       }
     }
@@ -269,82 +282,90 @@ function App() {
         </div>
         
         <div className="control-section">
-          <h3>Power Output Range</h3>
-          <div className="power-range-container">
-            <div className="range-values">
-              <span className="range-value">{minPowerOutput} MW</span>
-              <span className="range-value">{maxPowerOutput} MW</span>
-            </div>
-            <div className="range-slider-wrapper">
-              <input
-                type="range"
-                min="0"
-                max="10000"
-                step="10"
-                value={minPowerOutput}
-                onChange={(e) => setMinPowerOutput(Number(e.target.value))}
-                className="range-slider"
-              />
-              <input
-                type="range"
-                min="0"
-                max="10000"
-                step="10"
-                value={maxPowerOutput}
-                onChange={(e) => setMaxPowerOutput(Number(e.target.value))}
-                className="range-slider"
-              />
-            </div>
-            <div className="range-labels">
-              <span className="range-label">0 MW</span>
-              <span className="range-label">10,000 MW</span>
-            </div>
+          <div className="accordion-header" onClick={() => setIsPowerOutputSectionOpen(!isPowerOutputSectionOpen)}>
+            <h3>Power Output Range</h3>
+            <span className="accordion-icon">{isPowerOutputSectionOpen ? '▲' : '▼'}</span>
           </div>
+          {isPowerOutputSectionOpen && (
+            <div className="power-range-container">
+              <div className="range-values">
+                <span className="range-value">{minPowerOutput} MW</span>
+                <span className="range-value">{maxPowerOutput} MW</span>
+              </div>
+              <div className="range-slider-wrapper">
+                <input
+                  type="range"
+                  min="0"
+                  max="10000"
+                  step="10"
+                  value={minPowerOutput}
+                  onChange={(e) => setMinPowerOutput(Number(e.target.value))}
+                  className="range-slider"
+                />
+                <input
+                  type="range"
+                  min="0"
+                  max="10000"
+                  step="10"
+                  value={maxPowerOutput}
+                  onChange={(e) => setMaxPowerOutput(Number(e.target.value))}
+                  className="range-slider"
+                />
+              </div>
+              <div className="range-labels">
+                <span className="range-label">0 MW</span>
+                <span className="range-label">10,000 MW</span>
+              </div>
+            </div>
+          )}
         </div>
         
         <div className="control-section">
-          <h3>Nearby Plants</h3>
-          <div className="checkbox-group">
-            <label className="checkbox-item">
-              <input
-                type="checkbox"
-                checked={showOnlyNearbyPlants}
-                onChange={() => setShowOnlyNearbyPlants(!showOnlyNearbyPlants)}
-              />
-              <span className="checkmark"></span>
-              Show only plants near terrestrial links
-            </label>
+          <div className="accordion-header" onClick={() => setIsNearbyPlantsSectionOpen(!isNearbyPlantsSectionOpen)}>
+            <h3>Nearby Plants</h3>
+            <span className="accordion-icon">{isNearbyPlantsSectionOpen ? '▲' : '▼'}</span>
           </div>
-          
-          {/* Proximity dropdown and slider */}
-          <div className="proximity-control">
-            <button 
-              className="proximity-dropdown-button"
-              onClick={() => setIsProximityDropdownOpen(!isProximityDropdownOpen)}
-            >
-              Distance: {proximityDistance} miles {isProximityDropdownOpen ? '▲' : '▼'}
-            </button>
-            
-            {isProximityDropdownOpen && (
-              <div className="proximity-slider-container">
-                <div className="slider-value">{proximityDistance} miles</div>
-                <input
-                  type="range"
-                  min="1"
-                  max="50"
-                  step="1"
-                  value={proximityDistance}
-                  onChange={(e) => setProximityDistance(Number(e.target.value))}
-                  className="proximity-slider"
-                />
-                <div className="slider-labels">
-                  <span>1 mile</span>
-                  <span>50 miles</span>
+          {isNearbyPlantsSectionOpen && (
+            <>
+              <div className="checkbox-group">
+                <label className="checkbox-item">
+                  <input
+                    type="checkbox"
+                    checked={showOnlyNearbyPlants}
+                    onChange={() => setShowOnlyNearbyPlants(!showOnlyNearbyPlants)}
+                  />
+                  <span className="checkmark"></span>
+                  Show only plants near terrestrial links
+                </label>
+              </div>
+              
+              {/* Proximity slider - visible when section is expanded */}
+              <div className="proximity-control">
+                <div className="slider-header">
+                  <span className="slider-label">Distance Range</span>
+                  <span className="slider-value">{proximityDistance} miles</span>
+                </div>
+                <div className="proximity-slider-container">
+                  <input
+                    type="range"
+                    min="0"
+                    max="50"
+                    step="1"
+                    value={proximityDistance}
+                    onChange={(e) => setProximityDistance(Number(e.target.value))}
+                    className="proximity-slider"
+                    disabled={!showOnlyNearbyPlants}
+                  />
+                  <div className="slider-labels">
+                    <span>0 miles</span>
+                    <span>50 miles</span>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
+
       </div>
       
       {/* Revamped Legend */}

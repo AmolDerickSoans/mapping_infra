@@ -11,6 +11,7 @@ This project is an interactive infrastructure map of Canada that displays power 
 - Static legend explaining color coding
 - Info panel on hover showing asset details
 - Loading indicator during data fetch
+- **Proximity filtering**: Show only power plants within 10 miles of terrestrial links
 
 ## Technology Stack
 
@@ -61,6 +62,16 @@ This project is an interactive infrastructure map of Canada that displays power 
 | Coal          | Grey         | [100, 100, 100]|
 | Solar         | Yellow       | [255, 215, 0]  |
 | Other         | Purple       | [148, 103, 189]|
+
+## Proximity Filtering Feature
+
+A new "Nearby Plants" filter has been added to the control panel that allows users to show only power plants within 10 miles of any terrestrial link. This feature:
+
+1. Adds a checkbox in the control panel labeled "Show only plants within 10 miles of terrestrial links"
+2. When checked, filters the displayed power plants to only those within 10 miles of any terrestrial link
+3. Works in combination with other filters (source, country, power output range)
+4. Uses the Haversine formula for accurate distance calculations between coordinates
+5. Checks proximity to line segments by calculating distances to each segment of terrestrial links
 
 ## Project Structure
 
