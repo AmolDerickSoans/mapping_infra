@@ -9,7 +9,7 @@ import type { TerrestrialLink } from './models/TerrestrialLink';
 import { loadWfsCableData } from './utils/wfsDataLoader';
 import { loadAndProcessAllPowerPlants } from './utils/unifiedPowerPlantProcessor';
 import { loadInfrastructureData } from './utils/dataLoader';
-import { calculateDistance, isPointNearLine } from './utils/geoUtils';
+import { isPointNearLine } from './utils/geoUtils';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -58,6 +58,12 @@ function App() {
   const [showAmericanPlants, setShowAmericanPlants] = useState<boolean>(true);
   // State for proximity filtering
   const [showOnlyNearbyPlants, setShowOnlyNearbyPlants] = useState<boolean>(false);
+  // State for proximity dropdown and distance
+  const [isProximityDropdownOpen, setIsProximityDropdownOpen] = useState<boolean>(false);
+  const [proximityDistance, setProximityDistance] = useState<number>(10); // Default to 10 miles
+  // State for accordion sections
+  const [isLayersSectionOpen, setIsLayersSectionOpen] = useState<boolean>(true);
+  const [isCountriesSectionOpen, setIsCountriesSectionOpen] = useState<boolean>(true);
 
   // Toggle source filter
   const toggleSourceFilter = (source: string) => {
@@ -88,7 +94,7 @@ function App() {
         const { terrestrialLinks: terrestrialLinkData } = await loadInfrastructureData('data/infrastructure.geojson');
 
         setPowerPlants(powerPlantData);
-        setWfsCables(wfsCables);
+        setWfsCables(wfsCableData);
         setTerrestrialLinks(terrestrialLinkData);
         
         // Initialize filtered sources with all unique sources from the data
@@ -121,10 +127,10 @@ function App() {
     // New "nearby plants" filtering
     let passesNearbyFilter = true;
     if (showOnlyNearbyPlants && terrestrialLinks.length > 0) {
-      // Check if plant is within 10 miles of any terrestrial link
+      // Check if plant is within specified distance of any terrestrial link
       passesNearbyFilter = false;
       for (const link of terrestrialLinks) {
-        if (isPointNearLine(plant.coordinates, link.coordinates, 10)) { // 10 miles
+        if (isPointNearLine(plant.coordinates, link.coordinates, proximityDistance)) { // Use dynamic distance
           passesNearbyFilter = true;
           break;
         }
@@ -210,46 +216,56 @@ function App() {
       {/* Revamped Control Panel */}
       <div className="control-panel">
         <div className="control-section">
-          <h3>Layers</h3>
-          <div className="checkbox-group">
-            <label className="checkbox-item">
-              <input
-                type="checkbox"
-                checked={showPowerPlants}
-                onChange={() => setShowPowerPlants(!showPowerPlants)}
-              />
-              <span className="checkmark"></span>
-              Power Plants
-            </label>
-
-            <label className="checkbox-item">
-              <input
-                type="checkbox"
-                checked={showWfsCables}
-                onChange={() => setShowWfsCables(!showWfsCables)}
-              />
-              <span className="checkmark"></span>
-              Terrestrial Links (ITU)
-            </label>
+          <div className="accordion-header" onClick={() => setIsLayersSectionOpen(!isLayersSectionOpen)}>
+            <h3>Layers</h3>
+            <span className="accordion-icon">{isLayersSectionOpen ? '▲' : '▼'}</span>
           </div>
+          {isLayersSectionOpen && (
+            <div className="checkbox-group">
+              <label className="checkbox-item">
+                <input
+                  type="checkbox"
+                  checked={showPowerPlants}
+                  onChange={() => setShowPowerPlants(!showPowerPlants)}
+                />
+                <span className="checkmark"></span>
+                Power Plants
+              </label>
+
+              <label className="checkbox-item">
+                <input
+                  type="checkbox"
+                  checked={showWfsCables}
+                  onChange={() => setShowWfsCables(!showWfsCables)}
+                />
+                <span className="checkmark"></span>
+                Terrestrial Links (ITU)
+              </label>
+            </div>
+          )}
         </div>
         
         <div className="control-section">
-          <h3>Countries</h3>
-          <div className="country-filter">
-            <button 
-              className={`country-button ${showCanadianPlants ? 'active' : 'inactive'}`}
-              onClick={() => setShowCanadianPlants(!showCanadianPlants)}
-            >
-              <div className="flag-icon">🇨🇦</div>
-            </button>
-            <button 
-              className={`country-button ${showAmericanPlants ? 'active' : 'inactive'}`}
-              onClick={() => setShowAmericanPlants(!showAmericanPlants)}
-            >
-              <div className="flag-icon">🇺🇸</div>
-            </button>
+          <div className="accordion-header" onClick={() => setIsCountriesSectionOpen(!isCountriesSectionOpen)}>
+            <h3>Countries</h3>
+            <span className="accordion-icon">{isCountriesSectionOpen ? '▲' : '▼'}</span>
           </div>
+          {isCountriesSectionOpen && (
+            <div className="country-filter">
+              <button 
+                className={`country-button ${showCanadianPlants ? 'active' : 'inactive'}`}
+                onClick={() => setShowCanadianPlants(!showCanadianPlants)}
+              >
+                <div className="flag-icon">🇨🇦</div>
+              </button>
+              <button 
+                className={`country-button ${showAmericanPlants ? 'active' : 'inactive'}`}
+                onClick={() => setShowAmericanPlants(!showAmericanPlants)}
+              >
+                <div className="flag-icon">🇺🇸</div>
+              </button>
+            </div>
+          )}
         </div>
         
         <div className="control-section">
@@ -296,8 +312,37 @@ function App() {
                 onChange={() => setShowOnlyNearbyPlants(!showOnlyNearbyPlants)}
               />
               <span className="checkmark"></span>
-              Show only plants within 10 miles of terrestrial links
+              Show only plants near terrestrial links
             </label>
+          </div>
+          
+          {/* Proximity dropdown and slider */}
+          <div className="proximity-control">
+            <button 
+              className="proximity-dropdown-button"
+              onClick={() => setIsProximityDropdownOpen(!isProximityDropdownOpen)}
+            >
+              Distance: {proximityDistance} miles {isProximityDropdownOpen ? '▲' : '▼'}
+            </button>
+            
+            {isProximityDropdownOpen && (
+              <div className="proximity-slider-container">
+                <div className="slider-value">{proximityDistance} miles</div>
+                <input
+                  type="range"
+                  min="1"
+                  max="50"
+                  step="1"
+                  value={proximityDistance}
+                  onChange={(e) => setProximityDistance(Number(e.target.value))}
+                  className="proximity-slider"
+                />
+                <div className="slider-labels">
+                  <span>1 mile</span>
+                  <span>50 miles</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

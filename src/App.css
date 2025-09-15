@@ -49,14 +49,40 @@
   width: 250px;
   color: #000000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  max-height: calc(100vh - 100px);
+  max-height: calc(100vh - 120px);
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.3) rgba(0, 0, 0, 0.1);
+  scroll-behavior: smooth;
+}
+
+.control-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.control-panel::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+}
+
+.control-panel::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
 }
 
 .dark .control-panel {
   background-color: rgba(30, 30, 30, 0.9);
   color: white;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
+}
+
+.dark .control-panel::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .control-panel::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3);
 }
 
 .control-panel h3 {
@@ -69,6 +95,36 @@
 
 .dark .control-panel h3 {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Accordion styles */
+.accordion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.accordion-header:hover h3 {
+  color: #007bff;
+}
+
+.dark .accordion-header:hover h3 {
+  color: #66b3ff;
+}
+
+.accordion-icon {
+  font-size: 0.8rem;
+  transition: transform 0.3s ease;
+}
+
+.accordion-header:hover .accordion-icon {
+  transform: scale(1.1);
+}
+
+.checkbox-group, .country-filter {
+  transition: all 0.3s ease;
 }
 
 .control-section {
@@ -766,4 +822,121 @@ body {
 .map-container {
   height: calc(100vh - 120px); /* Adjust based on header/footer height */
   margin-top: 60px; /* Header height */
+}
+
+.proximity-control {
+  margin-top: 15px;
+}
+
+.proximity-dropdown-button {
+  width: 100%;
+  padding: 10px 15px;
+  background-color: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.9rem;
+  color: #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.dark .proximity-dropdown-button {
+  background-color: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ddd;
+}
+
+.proximity-dropdown-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.dark .proximity-dropdown-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.proximity-slider-container {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: rgba(0, 0, 0, 0.03);
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dark .proximity-slider-container {
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.slider-value {
+  text-align: center;
+  font-weight: bold;
+  color: #007bff;
+  margin-bottom: 10px;
+}
+
+.dark .slider-value {
+  color: #66b3ff;
+}
+
+.proximity-slider {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.1);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.dark .proximity-slider {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.proximity-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #007bff;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.proximity-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #007bff;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 0.7rem;
+  color: #666;
+  margin-top: 8px;
+}
+
+.dark .slider-labels {
+  color: #aaa;
 }
