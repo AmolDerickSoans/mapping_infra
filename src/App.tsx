@@ -6,9 +6,10 @@ import './App.css';
 import type { PowerPlant } from './models/PowerPlant';
 import type { Cable } from './models/Cable';
 import type { TerrestrialLink } from './models/TerrestrialLink';
-import { loadInfrastructureData } from './utils/dataLoader';
 import { loadWfsCableData } from './utils/wfsDataLoader';
 import { loadAndProcessAllPowerPlants } from './utils/unifiedPowerPlantProcessor';
+import { loadInfrastructureData } from './utils/dataLoader';
+import { calculateDistance, isPointNearLine } from './utils/geoUtils';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -41,11 +42,10 @@ const CABLE_COLOR: [number, number, number] = [255, 165, 0]; // Orange color
 function App() {
   const { theme } = useTheme();
   const [powerPlants, setPowerPlants] = useState<PowerPlant[]>([]);
-  const [terrestrialLinks, setTerrestrialLinks] = useState<TerrestrialLink[]>([]);
   const [wfsCables, setWfsCables] = useState<Cable[]>([]);
+  const [terrestrialLinks, setTerrestrialLinks] = useState<TerrestrialLink[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [showPowerPlants, setShowPowerPlants] = useState<boolean>(true);
-  const [showTerrestrialLinks, setShowTerrestrialLinks] = useState<boolean>(true);
   const [showWfsCables, setShowWfsCables] = useState<boolean>(true);
   const [hoverInfo, setHoverInfo] = useState<any>(null);
   // State for filtering power plants by source
@@ -56,6 +56,8 @@ function App() {
   // State for country filtering
   const [showCanadianPlants, setShowCanadianPlants] = useState<boolean>(true);
   const [showAmericanPlants, setShowAmericanPlants] = useState<boolean>(true);
+  // State for proximity filtering
+  const [showOnlyNearbyPlants, setShowOnlyNearbyPlants] = useState<boolean>(false);
 
   // Toggle source filter
   const toggleSourceFilter = (source: string) => {
@@ -78,16 +80,16 @@ function App() {
       try {
         // Load all power plant data using the new unified processor
         const powerPlantData = await loadAndProcessAllPowerPlants();
-        
-        // Load infrastructure data (unchanged)
-        const infrastructureData = await loadInfrastructureData('/data/infrastructure.geojson');
-        
+
         // Load WFS submarine cable data (unchanged)
         const wfsCableData = await loadWfsCableData();
-        
+
+        // Load terrestrial link data
+        const { terrestrialLinks: terrestrialLinkData } = await loadInfrastructureData('data/infrastructure.geojson');
+
         setPowerPlants(powerPlantData);
-        setTerrestrialLinks(infrastructureData.terrestrialLinks);
-        setWfsCables(wfsCableData);
+        setWfsCables(wfsCables);
+        setTerrestrialLinks(terrestrialLinkData);
         
         // Initialize filtered sources with all unique sources from the data
         const uniqueSources = new Set(powerPlantData.map(plant => plant.source));
@@ -103,7 +105,7 @@ function App() {
     loadData();
   }, []);
 
-  // Filter power plants based on selected sources, countries, and power output range
+  // Filter power plants based on selected sources, countries, power output range, and proximity
   const filteredPowerPlants = powerPlants.filter(plant => {
     // Existing source filtering
     const passesSourceFilter = filteredSources.has(plant.source) || plant.source === 'other';
@@ -115,15 +117,25 @@ function App() {
     
     // New power output range filtering
     const passesPowerOutputFilter = plant.output >= minPowerOutput && plant.output <= maxPowerOutput;
-    
-    return passesSourceFilter && passesCountryFilter && passesPowerOutputFilter;
+
+    // New "nearby plants" filtering
+    let passesNearbyFilter = true;
+    if (showOnlyNearbyPlants && terrestrialLinks.length > 0) {
+      // Check if plant is within 10 miles of any terrestrial link
+      passesNearbyFilter = false;
+      for (const link of terrestrialLinks) {
+        if (isPointNearLine(plant.coordinates, link.coordinates, 10)) { // 10 miles
+          passesNearbyFilter = true;
+          break;
+        }
+      }
+    }
+
+    return passesSourceFilter && passesCountryFilter && passesPowerOutputFilter && passesNearbyFilter;
   });
   
   // Get all unique sources from the data for the legend
   const allSourcesInData = Array.from(new Set(powerPlants.map(plant => plant.source))).sort();
-
-  // Define a color for terrestrial links
-  const TERRESTRIAL_LINK_COLOR: [number, number, number] = [0, 255, 0]; // Green color
 
   // Define layer visibility
   const layers = [
@@ -151,17 +163,6 @@ function App() {
       },
       onHover: (info: any) => setHoverInfo(info.object),
       onClick: (info: any) => console.log('Clicked:', info.object)
-    }),
-    // Add a layer for terrestrial links with visibility control
-    showTerrestrialLinks && new PathLayer({
-      id: 'terrestrial-links',
-      data: terrestrialLinks,
-      pickable: true,
-      widthMinPixels: 1,
-      getPath: (d: TerrestrialLink) => d.coordinates,
-      getColor: TERRESTRIAL_LINK_COLOR, // Green color
-      getWidth: 2,
-      onHover: (info: any) => setHoverInfo(info.object)
     }),
     showWfsCables && new PathLayer({
       id: 'wfs-cables',
@@ -220,16 +221,7 @@ function App() {
               <span className="checkmark"></span>
               Power Plants
             </label>
-            {/* Add checkbox for terrestrial links */}
-            <label className="checkbox-item">
-              <input
-                type="checkbox"
-                checked={showTerrestrialLinks}
-                onChange={() => setShowTerrestrialLinks(!showTerrestrialLinks)}
-              />
-              <span className="checkmark"></span>
-              Terrestrial Links
-            </label>
+
             <label className="checkbox-item">
               <input
                 type="checkbox"
@@ -293,6 +285,21 @@ function App() {
             </div>
           </div>
         </div>
+        
+        <div className="control-section">
+          <h3>Nearby Plants</h3>
+          <div className="checkbox-group">
+            <label className="checkbox-item">
+              <input
+                type="checkbox"
+                checked={showOnlyNearbyPlants}
+                onChange={() => setShowOnlyNearbyPlants(!showOnlyNearbyPlants)}
+              />
+              <span className="checkmark"></span>
+              Show only plants within 10 miles of terrestrial links
+            </label>
+          </div>
+        </div>
       </div>
       
       {/* Revamped Legend */}
@@ -343,11 +350,6 @@ function App() {
           {/* Update legend labels */}
           <div className="legend-item">
             <div className="legend-color" style={{ backgroundColor: `rgb(${CABLE_COLOR.join(',')})` }}></div>
-            <span className="legend-label">Terrestrial Links (ITU)</span>
-          </div>
-          {/* Add legend item for terrestrial links */}
-          <div className="legend-item">
-            <div className="legend-color" style={{ backgroundColor: `rgb(${TERRESTRIAL_LINK_COLOR.join(',')})` }}></div>
             <span className="legend-label">Terrestrial Links</span>
           </div>
         </div>

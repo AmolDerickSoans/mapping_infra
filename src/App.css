@@ -39,7 +39,7 @@
 /* Revamped Control Panel */
 .control-panel {
   position: absolute;
-  top: 80px;
+  top: 30px;
   right: 20px;
   background-color: rgba(255, 255, 255, 0.9);
   padding: 20px;
@@ -49,6 +49,8 @@
   width: 250px;
   color: #000000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
 }
 
 .dark .control-panel {
