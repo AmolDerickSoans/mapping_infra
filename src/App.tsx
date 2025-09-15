@@ -50,8 +50,9 @@ function App() {
   const [hoverInfo, setHoverInfo] = useState<any>(null);
   // State for filtering power plants by source
   const [filteredSources, setFilteredSources] = useState<Set<string>>(new Set());
-  // State for energy size scaling (adjusted for the data range)
-  const [energySizeScale, setEnergySizeScale] = useState<number>(1);
+  // State for power output range filtering (0 MW to 10000 MW)
+  const [minPowerOutput, setMinPowerOutput] = useState<number>(0);
+  const [maxPowerOutput, setMaxPowerOutput] = useState<number>(10000);
   // State for country filtering
   const [showCanadianPlants, setShowCanadianPlants] = useState<boolean>(true);
   const [showAmericanPlants, setShowAmericanPlants] = useState<boolean>(true);
@@ -102,7 +103,7 @@ function App() {
     loadData();
   }, []);
 
-  // Filter power plants based on selected sources and countries
+  // Filter power plants based on selected sources, countries, and power output range
   const filteredPowerPlants = powerPlants.filter(plant => {
     // Existing source filtering
     const passesSourceFilter = filteredSources.has(plant.source) || plant.source === 'other';
@@ -112,7 +113,10 @@ function App() {
       (showCanadianPlants && plant.country === 'CA') || 
       (showAmericanPlants && plant.country === 'US');
     
-    return passesSourceFilter && passesCountryFilter;
+    // New power output range filtering
+    const passesPowerOutputFilter = plant.output >= minPowerOutput && plant.output <= maxPowerOutput;
+    
+    return passesSourceFilter && passesCountryFilter && passesPowerOutputFilter;
   });
   
   // Get all unique sources from the data for the legend
@@ -137,9 +141,9 @@ function App() {
         // Logarithmic scaling to handle the wide range of outputs (1MW to 6000+ MW)
         // This will make the slider more effective across the entire range
         const logOutput = Math.log10(Math.max(d.output, 1)); // log10(1) = 0, log10(1000) = 3, etc.
-        // Scale the log output to a reasonable range (0 to 10) then multiply by slider value
+        // Scale the log output to a reasonable range (0 to 10)
         const scaledOutput = (logOutput / 4) * 10; // 4 is roughly log10(10000), gives us a 0-10 range
-        return Math.max(2, Math.min(40, scaledOutput * energySizeScale));
+        return Math.max(2, Math.min(40, scaledOutput));
       },
       getFillColor: (d: PowerPlant) => {
         const source = d.source;
@@ -257,21 +261,36 @@ function App() {
         </div>
         
         <div className="control-section">
-          <h3>Power Output</h3>
-          <div className="slider-container">
-            <span className="slider-label">1MW</span>
-            {/* Adjusted slider range for better control */}
-            <input
-              type="range"
-              min="0.5"
-              max="5"
-              step="0.1"
-              value={energySizeScale}
-              onChange={(e) => setEnergySizeScale(Number(e.target.value))}
-              className="energy-slider"
-            />
-            <span className="slider-label">1000MW</span>
-            <span className="slider-value">{energySizeScale.toFixed(1)}x</span>
+          <h3>Power Output Range</h3>
+          <div className="power-range-container">
+            <div className="range-values">
+              <span className="range-value">{minPowerOutput} MW</span>
+              <span className="range-value">{maxPowerOutput} MW</span>
+            </div>
+            <div className="range-slider-wrapper">
+              <input
+                type="range"
+                min="0"
+                max="10000"
+                step="10"
+                value={minPowerOutput}
+                onChange={(e) => setMinPowerOutput(Number(e.target.value))}
+                className="range-slider"
+              />
+              <input
+                type="range"
+                min="0"
+                max="10000"
+                step="10"
+                value={maxPowerOutput}
+                onChange={(e) => setMaxPowerOutput(Number(e.target.value))}
+                className="range-slider"
+              />
+            </div>
+            <div className="range-labels">
+              <span className="range-label">0 MW</span>
+              <span className="range-label">10,000 MW</span>
+            </div>
           </div>
         </div>
       </div>
