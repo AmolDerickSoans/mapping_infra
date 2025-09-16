@@ -62,9 +62,33 @@ export function isPointNearLine(point: [number, number], line: [number, number][
  * @returns Distance in miles
  */
 function distanceToLineSegment(point: [number, number], lineStart: [number, number], lineEnd: [number, number]): number {
-  // For simplicity, we'll calculate the distance to each endpoint and return the minimum
-  // This is a simpler approximation that should work well for our use case
-  const distanceToStart = calculateDistance(point, lineStart);
-  const distanceToEnd = calculateDistance(point, lineEnd);
-  return Math.min(distanceToStart, distanceToEnd);
+  const [x, y] = point;
+  const [x1, y1] = lineStart;
+  const [x2, y2] = lineEnd;
+
+  const A = x - x1;
+  const B = y - y1;
+  const C = x2 - x1;
+  const D = y2 - y1;
+
+  const dot = A * C + B * D;
+  const len_sq = C * C + D * D;
+  let param = -1;
+  if (len_sq !== 0) //in case of 0 length line
+      param = dot / len_sq;
+
+  let xx, yy;
+
+  if (param < 0) {
+    xx = x1;
+    yy = y1;
+  } else if (param > 1) {
+    xx = x2;
+    yy = y2;
+  } else {
+    xx = x1 + param * C;
+    yy = y1 + param * D;
+  }
+
+  return calculateDistance(point, [xx, yy]);
 }

@@ -5,11 +5,12 @@ import { ScatterplotLayer, PathLayer } from '@deck.gl/layers';
 import './App.css';
 import type { PowerPlant } from './models/PowerPlant';
 import type { Cable } from './models/Cable';
-import type { TerrestrialLink } from './models/TerrestrialLink';
 import { loadWfsCableData } from './utils/wfsDataLoader';
 import { loadAndProcessAllPowerPlants } from './utils/unifiedPowerPlantProcessor';
 import { loadInfrastructureData } from './utils/dataLoader';
 import { isPointNearLine } from './utils/geoUtils';
+import { createLineIndex, queryLineIndex } from './utils/spatialIndex';
+import RBush from 'rbush';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -43,7 +44,6 @@ function App() {
   const { theme } = useTheme();
   const [powerPlants, setPowerPlants] = useState<PowerPlant[]>([]);
   const [wfsCables, setWfsCables] = useState<Cable[]>([]);
-  const [terrestrialLinks, setTerrestrialLinks] = useState<TerrestrialLink[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [showPowerPlants, setShowPowerPlants] = useState<boolean>(true);
   const [showWfsCables, setShowWfsCables] = useState<boolean>(true);
@@ -65,6 +65,7 @@ function App() {
   const [isCountriesSectionOpen, setIsCountriesSectionOpen] = useState<boolean>(false);
   const [isPowerOutputSectionOpen, setIsPowerOutputSectionOpen] = useState<boolean>(false);
   const [isNearbyPlantsSectionOpen, setIsNearbyPlantsSectionOpen] = useState<boolean>(false);
+  const [lineIndex, setLineIndex] = useState<RBush<any> | null>(null);
 
   // Toggle source filter
   const toggleSourceFilter = (source: string) => {
@@ -96,7 +97,11 @@ function App() {
 
         setPowerPlants(powerPlantData);
         setWfsCables(wfsCableData);
-        setTerrestrialLinks(terrestrialLinkData);
+
+        // Create spatial index for both terrestrial links and submarine cables
+        const allLines = [...terrestrialLinkData, ...wfsCableData];
+        const index = createLineIndex(allLines);
+        setLineIndex(index);
         
         // Initialize filtered sources with all unique sources from the data
         const uniqueSources = new Set(powerPlantData.map(plant => plant.source));
@@ -127,25 +132,13 @@ function App() {
 
     // New "nearby plants" filtering - check against both terrestrial links and submarine cables
     let passesNearbyFilter = true;
-    if (showOnlyNearbyPlants && (terrestrialLinks.length > 0 || wfsCables.length > 0)) {
-      // Check if plant is within specified distance of any terrestrial link or submarine cable
+    if (showOnlyNearbyPlants && lineIndex) {
+      const nearbySegments = queryLineIndex(lineIndex, plant.coordinates, proximityDistance);
       passesNearbyFilter = false;
-      
-      // Check terrestrial links
-      for (const link of terrestrialLinks) {
-        if (isPointNearLine(plant.coordinates, link.coordinates, proximityDistance)) {
+      for (const segment of nearbySegments) {
+        if (isPointNearLine(plant.coordinates, segment, proximityDistance)) {
           passesNearbyFilter = true;
           break;
-        }
-      }
-      
-      // If not near terrestrial links, check submarine cables
-      if (!passesNearbyFilter) {
-        for (const cable of wfsCables) {
-          if (isPointNearLine(plant.coordinates, cable.coordinates, proximityDistance)) {
-            passesNearbyFilter = true;
-            break;
-          }
         }
       }
     }
