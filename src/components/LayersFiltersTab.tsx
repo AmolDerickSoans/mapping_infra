@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Eye } from 'lucide-react';
 import type { PowerRange } from '../utils/powerRangeCalculator';
 import DualRangeSlider from './DualRangeSlider';
 import './LayersFiltersTab.css';
@@ -25,11 +26,13 @@ interface LayersFiltersTabProps {
   // Power range limits
   powerRange: PowerRange;
 
-  // Proximity filtering
-  showOnlyNearbyPlants: boolean;
-  proximityDistance: number;
-  onToggleNearbyPlants: () => void;
-  onProximityDistanceChange: (value: number) => void;
+   // Proximity filtering
+   showOnlyNearbyPlants: boolean;
+   proximityDistance: number;
+   onToggleNearbyPlants: () => void;
+   onProximityDistanceChange: (value: number) => void;
+   proximityPlantCount: number;
+   onOpenProximityDialog: () => void;
 }
 
 type PowerRangePreset = 'small' | 'medium' | 'large' | 'custom';
@@ -48,10 +51,12 @@ const LayersFiltersTab: React.FC<LayersFiltersTabProps> = ({
   onMinPowerOutputChange,
   onMaxPowerOutputChange,
   powerRange,
-  showOnlyNearbyPlants,
-  proximityDistance,
-  onToggleNearbyPlants,
-  onProximityDistanceChange,
+   showOnlyNearbyPlants,
+   proximityDistance,
+   onToggleNearbyPlants,
+   onProximityDistanceChange,
+   proximityPlantCount,
+   onOpenProximityDialog,
 }) => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [powerRangePreset, setPowerRangePreset] = useState<PowerRangePreset | null>(null);
@@ -176,6 +181,64 @@ const LayersFiltersTab: React.FC<LayersFiltersTabProps> = ({
         </div>
       </section>
 
+      {/* Proximity Filter Section */}
+      <section className="tab-section proximity-section">
+        <h3 className="section-title">Proximity Filter</h3>
+
+        <div className="control-group">
+          <div className="proximity-header">
+            <label className="toggle-item">
+              <input
+                type="checkbox"
+                checked={showOnlyNearbyPlants}
+                onChange={onToggleNearbyPlants}
+                className="toggle-input"
+              />
+              <span className="toggle-slider"></span>
+              <span className="toggle-label">Show only plants near infrastructure</span>
+            </label>
+
+            {showOnlyNearbyPlants && (
+              <button
+                className="eye-button"
+                onClick={onOpenProximityDialog}
+                aria-label="View detailed list of nearby plants"
+                title="View detailed list of nearby plants"
+              >
+                <Eye size={16} />
+              </button>
+            )}
+          </div>
+
+          {showOnlyNearbyPlants && (
+            <div className="proximity-control">
+              <div className="proximity-info">
+                <label htmlFor="proximity-distance" className="control-label">
+                  Distance: {proximityDistance} miles
+                </label>
+                <span className="plant-count">
+                  {proximityPlantCount} plants found
+                </span>
+              </div>
+              <input
+                id="proximity-distance"
+                type="range"
+                min="0"
+                max="80"
+                step="1"
+                value={proximityDistance}
+                onChange={(e) => onProximityDistanceChange(Number(e.target.value))}
+                className="proximity-slider"
+              />
+              <div className="slider-labels">
+                <span>0 miles</span>
+                <span>80 miles</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Advanced Filters Section */}
       <section className="tab-section">
         <button
@@ -202,41 +265,7 @@ const LayersFiltersTab: React.FC<LayersFiltersTabProps> = ({
               />
             </div>
 
-            {/* Proximity Filter */}
-            <div className="control-group">
-              <label className="toggle-item">
-                <input
-                  type="checkbox"
-                  checked={showOnlyNearbyPlants}
-                  onChange={onToggleNearbyPlants}
-                  className="toggle-input"
-                />
-                <span className="toggle-slider"></span>
-                <span className="toggle-label">Show only plants near infrastructure</span>
-              </label>
 
-              {showOnlyNearbyPlants && (
-                <div className="proximity-control">
-                  <label htmlFor="proximity-distance" className="control-label">
-                    Distance: {proximityDistance} miles
-                  </label>
-                  <input
-                    id="proximity-distance"
-                    type="range"
-                    min="0"
-                     max="80"
-                    step="1"
-                    value={proximityDistance}
-                    onChange={(e) => onProximityDistanceChange(Number(e.target.value))}
-                    className="proximity-slider"
-                  />
-                  <div className="slider-labels">
-                    <span>0 miles</span>
-                    <span>80 miles</span>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         )}
       </section>

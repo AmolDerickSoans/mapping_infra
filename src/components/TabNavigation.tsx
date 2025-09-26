@@ -98,17 +98,15 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
 
 // Icon mapping function using Lucide React icons
 const getTabIcon = (iconName: string): React.ReactElement | null => {
-  const iconProps = { size: 18 };
-
   switch (iconName) {
     case 'layers':
-      return <Layers {...iconProps} />;
+      return <Layers size={18} />;
     case 'legend':
-      return <MapPin {...iconProps} />;
+      return <MapPin size={18} />;
     case 'palette':
-      return <Palette {...iconProps} />;
+      return <Palette size={18} />;
     case 'database':
-      return <Database {...iconProps} />;
+      return <Database size={18} />;
     default:
       return null;
   }

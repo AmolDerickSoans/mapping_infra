@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Map, { NavigationControl } from 'react-map-gl';
 import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer } from '@deck.gl/layers';
@@ -16,10 +16,28 @@ import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import SidePanel from './components/SidePanel';
+import ProximityDialog from './components/ProximityDialog';
 import { Search, MapPin, X } from 'lucide-react';
 
 // SizeByOption type as per MAP_FEATURES_DOCUMENTATION.md
 type SizeByOption = 'nameplate_capacity' | 'capacity_factor' | 'generation';
+
+// Custom hook for debouncing values
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 // Mapbox token from environment variables
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'YOUR_MAPBOX_TOKEN_HERE';
@@ -64,8 +82,20 @@ function App() {
   const [showAmericanPlants, setShowAmericanPlants] = useState<boolean>(true);
   // State for proximity filtering
   const [showOnlyNearbyPlants, setShowOnlyNearbyPlants] = useState<boolean>(false);
-  // State for proximity distance
-  const [proximityDistance, setProximityDistance] = useState<number>(0); // Changed from 10 to 0 miles
+    // State for proximity distance
+    const [proximityDistance, setProximityDistance] = useState<number>(0); // Changed from 10 to 0 miles
+    const [sliderValue, setSliderValue] = useState<number>(0);
+    const debouncedDistance = useDebounce(sliderValue, 300); // 300ms debounce for expensive operations only
+
+    // Update proximity distance immediately for real-time slider feedback
+    useEffect(() => {
+      setProximityDistance(sliderValue);
+    }, [sliderValue]);
+
+    // Callback for slider changes (immediate response)
+    const handleSliderChange = useCallback((value: number) => {
+      setSliderValue(value);
+    }, []);
   const [lineIndex, setLineIndex] = useState<RBush<any> | null>(null);
    const [powerRange, setPowerRange] = useState<PowerRange>({ min: 0, max: 10000 });
    // Circle sizing state variables as per MAP_FEATURES_DOCUMENTATION.md
@@ -75,6 +105,8 @@ function App() {
     const [showSummerCapacity, setShowSummerCapacity] = useState<boolean>(false);
      // State for persistent tooltip
      const [isTooltipPersistent, setIsTooltipPersistent] = useState<boolean>(false);
+     // State for proximity dialog
+     const [isProximityDialogOpen, setIsProximityDialogOpen] = useState<boolean>(false);
 
   // Toggle source filter
   const toggleSourceFilter = (source: string) => {
@@ -184,6 +216,60 @@ function App() {
   
   // Get all unique sources from the data for the legend
   const allSourcesInData = Array.from(new Set(powerPlants.map(plant => plant.source))).sort();
+
+  // Calculate count of plants within proximity distance (using debounced value for performance)
+  const proximityPlantCount = useMemo(() => {
+    if (!showOnlyNearbyPlants || !lineIndex) return 0;
+
+    return powerPlants.filter(plant => {
+      // Check if plant passes other filters first
+      const passesSourceFilter = filteredSources.has(plant.source) || plant.source === 'other';
+      const passesCountryFilter =
+        (showCanadianPlants && plant.country === 'CA') ||
+        (showAmericanPlants && plant.country === 'US');
+      const passesPowerOutputFilter = plant.output >= minPowerOutput && plant.output <= maxPowerOutput;
+
+      if (!passesSourceFilter || !passesCountryFilter || !passesPowerOutputFilter) {
+        return false;
+      }
+
+      // Check proximity to infrastructure (use debounced distance for performance)
+      const nearbySegments = queryLineIndex(lineIndex, plant.coordinates, debouncedDistance);
+      for (const segment of nearbySegments) {
+        if (isPointNearLine(plant.coordinates, segment, debouncedDistance)) {
+          return true;
+        }
+      }
+      return false;
+    }).length;
+  }, [powerPlants, showOnlyNearbyPlants, lineIndex, debouncedDistance, filteredSources, showCanadianPlants, showAmericanPlants, minPowerOutput, maxPowerOutput]);
+
+  // Get the actual list of nearby plants for the dialog (using debounced distance)
+  const nearbyPlants = useMemo(() => {
+    if (!showOnlyNearbyPlants || !lineIndex) return [];
+
+    return powerPlants.filter(plant => {
+      // Check if plant passes other filters first
+      const passesSourceFilter = filteredSources.has(plant.source) || plant.source === 'other';
+      const passesCountryFilter =
+        (showCanadianPlants && plant.country === 'CA') ||
+        (showAmericanPlants && plant.country === 'US');
+      const passesPowerOutputFilter = plant.output >= minPowerOutput && plant.output <= maxPowerOutput;
+
+      if (!passesSourceFilter || !passesCountryFilter || !passesPowerOutputFilter) {
+        return false;
+      }
+
+      // Check proximity to infrastructure (use debounced distance for performance)
+      const nearbySegments = queryLineIndex(lineIndex, plant.coordinates, debouncedDistance);
+      for (const segment of nearbySegments) {
+        if (isPointNearLine(plant.coordinates, segment, debouncedDistance)) {
+          return true;
+        }
+      }
+      return false;
+    });
+  }, [powerPlants, showOnlyNearbyPlants, lineIndex, debouncedDistance, filteredSources, showCanadianPlants, showAmericanPlants, minPowerOutput, maxPowerOutput]);
 
   // Count power plants by source
   const powerPlantCounts = useMemo(() => {
@@ -308,10 +394,12 @@ function App() {
         onMinPowerOutputChange={setMinPowerOutput}
         onMaxPowerOutputChange={setMaxPowerOutput}
         powerRange={powerRange}
-        showOnlyNearbyPlants={showOnlyNearbyPlants}
-        proximityDistance={proximityDistance}
-        onToggleNearbyPlants={() => setShowOnlyNearbyPlants(!showOnlyNearbyPlants)}
-        onProximityDistanceChange={setProximityDistance}
+         showOnlyNearbyPlants={showOnlyNearbyPlants}
+         proximityDistance={proximityDistance}
+         onToggleNearbyPlants={() => setShowOnlyNearbyPlants(!showOnlyNearbyPlants)}
+         onProximityDistanceChange={handleSliderChange}
+         proximityPlantCount={proximityPlantCount}
+         onOpenProximityDialog={() => setIsProximityDialogOpen(true)}
         sizeMultiplier={sizeMultiplier}
         setSizeMultiplier={setSizeMultiplier}
         capacityWeight={capacityWeight}
@@ -323,9 +411,19 @@ function App() {
         powerPlants={powerPlants}
         allSourcesInData={allSourcesInData}
         powerPlantCounts={powerPlantCounts}
-      />
-      
-       {/* Unified Info Panel */}
+       />
+
+       {/* Proximity Dialog */}
+       <ProximityDialog
+         isOpen={isProximityDialogOpen}
+         onClose={() => setIsProximityDialogOpen(false)}
+         proximityDistance={sliderValue}
+         onDistanceChange={handleSliderChange}
+         nearbyPlants={nearbyPlants}
+         isCalculating={sliderValue !== debouncedDistance}
+       />
+
+        {/* Unified Info Panel */}
        {hoverInfo && (
          <div className="info-panel">
            {/* Close button only when persistent */}

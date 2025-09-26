@@ -29,11 +29,13 @@ interface SidePanelProps {
   // Power range limits
   powerRange: PowerRange;
 
-  // Proximity filtering
-  showOnlyNearbyPlants: boolean;
-  proximityDistance: number;
-  onToggleNearbyPlants: () => void;
-  onProximityDistanceChange: (value: number) => void;
+    // Proximity filtering
+    showOnlyNearbyPlants: boolean;
+    proximityDistance: number;
+    onToggleNearbyPlants: () => void;
+    onProximityDistanceChange: (value: number) => void;
+    proximityPlantCount: number;
+    onOpenProximityDialog: () => void;
 
    // Visualization controls
    sizeMultiplier: number;
@@ -75,11 +77,13 @@ const SidePanel: React.FC<SidePanelProps> = ({
    onMaxPowerOutputChange,
    powerRange,
 
-   // Proximity
-  showOnlyNearbyPlants,
-  proximityDistance,
-  onToggleNearbyPlants,
-  onProximityDistanceChange,
+    // Proximity
+   showOnlyNearbyPlants,
+   proximityDistance,
+   onToggleNearbyPlants,
+   onProximityDistanceChange,
+   proximityPlantCount,
+   onOpenProximityDialog,
 
    // Visualization controls
    sizeMultiplier,
@@ -145,10 +149,12 @@ const SidePanel: React.FC<SidePanelProps> = ({
             onMinPowerOutputChange={onMinPowerOutputChange}
             onMaxPowerOutputChange={onMaxPowerOutputChange}
             powerRange={powerRange}
-            showOnlyNearbyPlants={showOnlyNearbyPlants}
-            proximityDistance={proximityDistance}
-            onToggleNearbyPlants={onToggleNearbyPlants}
-            onProximityDistanceChange={onProximityDistanceChange}
+             showOnlyNearbyPlants={showOnlyNearbyPlants}
+             proximityDistance={proximityDistance}
+             onToggleNearbyPlants={onToggleNearbyPlants}
+             onProximityDistanceChange={onProximityDistanceChange}
+             proximityPlantCount={proximityPlantCount}
+             onOpenProximityDialog={onOpenProximityDialog}
           />
         );
 
