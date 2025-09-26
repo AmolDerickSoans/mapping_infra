@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Map, { NavigationControl } from 'react-map-gl';
 import DeckGL from '@deck.gl/react';
 import { ScatterplotLayer, PathLayer } from '@deck.gl/layers';
@@ -10,10 +10,16 @@ import { loadAndProcessAllPowerPlants } from './utils/unifiedPowerPlantProcessor
 import { loadInfrastructureData } from './utils/dataLoader';
 import { isPointNearLine } from './utils/geoUtils';
 import { createLineIndex, queryLineIndex } from './utils/spatialIndex';
+import { calculatePowerRange, type PowerRange } from './utils/powerRangeCalculator';
 import RBush from 'rbush';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import SidePanel from './components/SidePanel';
+import { Search, MapPin, X } from 'lucide-react';
+
+// SizeByOption type as per MAP_FEATURES_DOCUMENTATION.md
+type SizeByOption = 'nameplate_capacity' | 'capacity_factor' | 'generation';
 
 // Mapbox token from environment variables
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'YOUR_MAPBOX_TOKEN_HERE';
@@ -60,12 +66,15 @@ function App() {
   const [showOnlyNearbyPlants, setShowOnlyNearbyPlants] = useState<boolean>(false);
   // State for proximity distance
   const [proximityDistance, setProximityDistance] = useState<number>(0); // Changed from 10 to 0 miles
-  // State for accordion sections - all minimized by default
-  const [isLayersSectionOpen, setIsLayersSectionOpen] = useState<boolean>(false);
-  const [isCountriesSectionOpen, setIsCountriesSectionOpen] = useState<boolean>(false);
-  const [isPowerOutputSectionOpen, setIsPowerOutputSectionOpen] = useState<boolean>(false);
-  const [isNearbyPlantsSectionOpen, setIsNearbyPlantsSectionOpen] = useState<boolean>(false);
   const [lineIndex, setLineIndex] = useState<RBush<any> | null>(null);
+   const [powerRange, setPowerRange] = useState<PowerRange>({ min: 0, max: 10000 });
+   // Circle sizing state variables as per MAP_FEATURES_DOCUMENTATION.md
+   const [sizeMultiplier, setSizeMultiplier] = useState<number>(2);
+    const [capacityWeight, setCapacityWeight] = useState<number>(0.1);
+    const [sizeByOption, setSizeByOption] = useState<SizeByOption>('nameplate_capacity');
+    const [showSummerCapacity, setShowSummerCapacity] = useState<boolean>(false);
+     // State for persistent tooltip
+     const [isTooltipPersistent, setIsTooltipPersistent] = useState<boolean>(false);
 
   // Toggle source filter
   const toggleSourceFilter = (source: string) => {
@@ -78,6 +87,25 @@ function App() {
       }
       return newSet;
     });
+  };
+
+   // CTA handler functions
+   const handleGoogleSearch = (plantName: string, source?: string, owner?: string) => {
+     // Build search query with context: name + source + owner + "powerplant"
+     const searchTerms = [plantName];
+     if (source) searchTerms.push(source);
+     if (owner) searchTerms.push(owner);
+     searchTerms.push('powerplant');
+
+     const searchQuery = searchTerms.join(' ');
+     const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+     window.open(searchUrl, '_blank', 'noopener,noreferrer');
+   };
+
+  const handleGoogleMaps = (coordinates: [number, number]) => {
+    const [lng, lat] = coordinates;
+    const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+    window.open(mapsUrl, '_blank', 'noopener,noreferrer');
   };
 
   // Load data on component mount
@@ -98,11 +126,19 @@ function App() {
         setPowerPlants(powerPlantData);
         setWfsCables(wfsCableData);
 
+        // Calculate actual power range from data
+        const calculatedRange = calculatePowerRange(powerPlantData);
+        setPowerRange(calculatedRange);
+
+        // Update current filter values to fit within new range if needed
+        setMinPowerOutput(prev => Math.max(prev, calculatedRange.min));
+        setMaxPowerOutput(prev => Math.min(prev, calculatedRange.max));
+
         // Create spatial index for both terrestrial links and submarine cables
         const allLines = [...terrestrialLinkData, ...wfsCableData];
         const index = createLineIndex(allLines);
         setLineIndex(index);
-        
+
         // Initialize filtered sources with all unique sources from the data
         const uniqueSources = new Set(powerPlantData.map(plant => plant.source));
         console.log('Unique sources in data:', Array.from(uniqueSources));
@@ -149,32 +185,67 @@ function App() {
   // Get all unique sources from the data for the legend
   const allSourcesInData = Array.from(new Set(powerPlants.map(plant => plant.source))).sort();
 
-  // Define layer visibility
-  const layers = [
-    showPowerPlants && new ScatterplotLayer({
+  // Count power plants by source
+  const powerPlantCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    powerPlants.forEach(plant => {
+      counts[plant.source] = (counts[plant.source] || 0) + 1;
+    });
+    // Add cable count
+    counts['cables'] = wfsCables.length;
+    return counts;
+  }, [powerPlants, wfsCables]);
+
+  const layers = useMemo(() => {
+    return [
+      showPowerPlants && new ScatterplotLayer({
       id: 'power-plants',
       data: filteredPowerPlants,
       pickable: true,
       opacity: 0.8,
       filled: true,
+      radiusUnits: 'pixels',           // ✅ keep in pixels
       radiusMinPixels: 2,
-      radiusMaxPixels: 40,
+      radiusMaxPixels: 100,            // ✅ cap to avoid huge blobs
       getPosition: (d: PowerPlant) => d.coordinates,
-      // Improved scaling algorithm that works better with the wide range of power outputs
       getRadius: (d: PowerPlant) => {
-        // Logarithmic scaling to handle the wide range of outputs (1MW to 6000+ MW)
-        // This will make the slider more effective across the entire range
-        const logOutput = Math.log10(Math.max(d.output, 1)); // log10(1) = 0, log10(1000) = 3, etc.
-        // Scale the log output to a reasonable range (0 to 10)
-        const scaledOutput = (logOutput / 4) * 10; // 4 is roughly log10(10000), gives us a 0-10 range
-        return Math.max(2, Math.min(40, scaledOutput));
+        let value;
+        switch (sizeByOption) {
+          case 'nameplate_capacity':
+            value = d.output;
+            break;
+          case 'capacity_factor':
+            value = d.capacityFactor || d.output;
+            break;
+          case 'generation':
+            value = d.generation || d.output;
+            break;
+          default:
+            value = d.output;
+        }
+
+        // Log-scale normalization
+        const logValue = Math.log10(Math.max(value, 1));
+        const logMin = Math.log10(Math.max(powerRange.min, 1));
+        const logMax = Math.log10(Math.max(powerRange.max, 1));
+        const normalized =
+          logMax > logMin ? (logValue - logMin) / (logMax - logMin) : 0;
+
+        // Final radius: base size + emphasis factor
+        return sizeMultiplier + capacityWeight * normalized * 10;
       },
-      getFillColor: (d: PowerPlant) => {
-        const source = d.source;
-        return POWER_PLANT_COLORS[source] || POWER_PLANT_COLORS.other;
+      updateTriggers: {
+        getRadius: [sizeMultiplier, capacityWeight, sizeByOption, powerRange],
       },
+      getFillColor: (d: PowerPlant) =>
+        POWER_PLANT_COLORS[d.source] || POWER_PLANT_COLORS.other,
       onHover: (info: any) => setHoverInfo(info.object),
-      onClick: (info: any) => console.log('Clicked:', info.object)
+       onClick: (info: any) => {
+         if (info.object) {
+           setHoverInfo(info.object);
+           setIsTooltipPersistent(true);
+         }
+       },
     }),
     showWfsCables && new PathLayer({
       id: 'wfs-cables',
@@ -186,7 +257,8 @@ function App() {
       getWidth: 2, // Thinner cables
       onHover: (info: any) => setHoverInfo(info.object)
     })
-  ].filter(Boolean);
+    ].filter(Boolean);
+  }, [filteredPowerPlants, showPowerPlants, showWfsCables, wfsCables, sizeMultiplier, capacityWeight, sizeByOption, setHoverInfo, powerRange]);
 
   return (
     <div className="app-container">
@@ -218,224 +290,99 @@ function App() {
         </DeckGL>
       </div>
       <Footer />
-      
-      {/* Revamped Control Panel */}
-      <div className="control-panel">
-        <div className="control-section">
-          <div className="accordion-header" onClick={() => setIsLayersSectionOpen(!isLayersSectionOpen)}>
-            <h3>Layers</h3>
-            <span className="accordion-icon">{isLayersSectionOpen ? '▲' : '▼'}</span>
-          </div>
-          {isLayersSectionOpen && (
-            <div className="checkbox-group">
-              <label className="checkbox-item">
-                <input
-                  type="checkbox"
-                  checked={showPowerPlants}
-                  onChange={() => setShowPowerPlants(!showPowerPlants)}
-                />
-                <span className="checkmark"></span>
-                Power Plants
-              </label>
 
-              <label className="checkbox-item">
-                <input
-                  type="checkbox"
-                  checked={showWfsCables}
-                  onChange={() => setShowWfsCables(!showWfsCables)}
-                />
-                <span className="checkmark"></span>
-                Terrestrial Links (ITU)
-              </label>
-            </div>
-          )}
-        </div>
-        
-        <div className="control-section">
-          <div className="accordion-header" onClick={() => setIsCountriesSectionOpen(!isCountriesSectionOpen)}>
-            <h3>Countries</h3>
-            <span className="accordion-icon">{isCountriesSectionOpen ? '▲' : '▼'}</span>
-          </div>
-          {isCountriesSectionOpen && (
-            <div className="country-filter">
-              <button 
-                className={`country-button ${showCanadianPlants ? 'active' : 'inactive'}`}
-                onClick={() => setShowCanadianPlants(!showCanadianPlants)}
-              >
-                <div className="flag-icon">🇨🇦</div>
-              </button>
-              <button 
-                className={`country-button ${showAmericanPlants ? 'active' : 'inactive'}`}
-                onClick={() => setShowAmericanPlants(!showAmericanPlants)}
-              >
-                <div className="flag-icon">🇺🇸</div>
-              </button>
-            </div>
-          )}
-        </div>
-        
-        <div className="control-section">
-          <div className="accordion-header" onClick={() => setIsPowerOutputSectionOpen(!isPowerOutputSectionOpen)}>
-            <h3>Power Output Range</h3>
-            <span className="accordion-icon">{isPowerOutputSectionOpen ? '▲' : '▼'}</span>
-          </div>
-          {isPowerOutputSectionOpen && (
-            <div className="power-range-container">
-              <div className="range-values">
-                <span className="range-value">{minPowerOutput} MW</span>
-                <span className="range-value">{maxPowerOutput} MW</span>
-              </div>
-              <div className="range-slider-wrapper">
-                <input
-                  type="range"
-                  min="0"
-                  max="10000"
-                  step="10"
-                  value={minPowerOutput}
-                  onChange={(e) => setMinPowerOutput(Number(e.target.value))}
-                  className="range-slider"
-                />
-                <input
-                  type="range"
-                  min="0"
-                  max="10000"
-                  step="10"
-                  value={maxPowerOutput}
-                  onChange={(e) => setMaxPowerOutput(Number(e.target.value))}
-                  className="range-slider"
-                />
-              </div>
-              <div className="range-labels">
-                <span className="range-label">0 MW</span>
-                <span className="range-label">10,000 MW</span>
-              </div>
-            </div>
-          )}
-        </div>
-        
-        <div className="control-section">
-          <div className="accordion-header" onClick={() => setIsNearbyPlantsSectionOpen(!isNearbyPlantsSectionOpen)}>
-            <h3>Nearby Plants</h3>
-            <span className="accordion-icon">{isNearbyPlantsSectionOpen ? '▲' : '▼'}</span>
-          </div>
-          {isNearbyPlantsSectionOpen && (
-            <>
-              <div className="checkbox-group">
-                <label className="checkbox-item">
-                  <input
-                    type="checkbox"
-                    checked={showOnlyNearbyPlants}
-                    onChange={() => setShowOnlyNearbyPlants(!showOnlyNearbyPlants)}
-                  />
-                  <span className="checkmark"></span>
-                  Show only plants near terrestrial links
-                </label>
-              </div>
-              
-              {/* Proximity slider - visible when section is expanded */}
-              <div className="proximity-control">
-                <div className="slider-header">
-                  <span className="slider-label">Distance Range</span>
-                  <span className="slider-value">{proximityDistance} miles</span>
-                </div>
-                <div className="proximity-slider-container">
-                  <input
-                    type="range"
-                    min="0"
-                    max="50"
-                    step="1"
-                    value={proximityDistance}
-                    onChange={(e) => setProximityDistance(Number(e.target.value))}
-                    className="proximity-slider"
-                    disabled={!showOnlyNearbyPlants}
-                  />
-                  <div className="slider-labels">
-                    <span>0 miles</span>
-                    <span>50 miles</span>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+      {/* Unified Side Panel */}
+      <SidePanel
+        showPowerPlants={showPowerPlants}
+        showWfsCables={showWfsCables}
+        onTogglePowerPlants={() => setShowPowerPlants(!showPowerPlants)}
+        onToggleWfsCables={() => setShowWfsCables(!showWfsCables)}
+        filteredSources={filteredSources}
+        onToggleSourceFilter={toggleSourceFilter}
+        showCanadianPlants={showCanadianPlants}
+        showAmericanPlants={showAmericanPlants}
+        onToggleCanadianPlants={() => setShowCanadianPlants(!showCanadianPlants)}
+        onToggleAmericanPlants={() => setShowAmericanPlants(!showAmericanPlants)}
+        minPowerOutput={minPowerOutput}
+        maxPowerOutput={maxPowerOutput}
+        onMinPowerOutputChange={setMinPowerOutput}
+        onMaxPowerOutputChange={setMaxPowerOutput}
+        powerRange={powerRange}
+        showOnlyNearbyPlants={showOnlyNearbyPlants}
+        proximityDistance={proximityDistance}
+        onToggleNearbyPlants={() => setShowOnlyNearbyPlants(!showOnlyNearbyPlants)}
+        onProximityDistanceChange={setProximityDistance}
+        sizeMultiplier={sizeMultiplier}
+        setSizeMultiplier={setSizeMultiplier}
+        capacityWeight={capacityWeight}
+        setCapacityWeight={setCapacityWeight}
+        sizeByOption={sizeByOption}
+        setSizeByOption={setSizeByOption}
+        showSummerCapacity={showSummerCapacity}
+        setShowSummerCapacity={setShowSummerCapacity}
+        powerPlants={powerPlants}
+        allSourcesInData={allSourcesInData}
+        powerPlantCounts={powerPlantCounts}
+      />
+      
+       {/* Unified Info Panel */}
+       {hoverInfo && (
+         <div className="info-panel">
+           {/* Close button only when persistent */}
+           {isTooltipPersistent && (
+             <button
+               className="close-button"
+               onClick={() => {
+                 setIsTooltipPersistent(false);
+                 setHoverInfo(null);
+               }}
+               aria-label="Close tooltip"
+             >
+               <X size={16} />
+             </button>
+           )}
 
-      </div>
-      
-      {/* Revamped Legend */}
-      <div className="legend-panel">
-        <h3>Power Plant Types</h3>
-        <div className="legend-grid">
-          {allSourcesInData.map((source) => {
-            // Skip 'other' for now, we'll add it at the end
-            if (source === 'other') return null;
-            
-            const color = POWER_PLANT_COLORS[source] || POWER_PLANT_COLORS.other;
-            return (
-              <div 
-                className={`legend-item ${filteredSources.has(source) ? 'active' : 'inactive'}`}
-                key={source}
-                onClick={() => toggleSourceFilter(source)}
-              >
-                <div 
-                  className="legend-color" 
-                  style={{ 
-                    backgroundColor: `rgb(${color.join(',')})`
-                  }}
-                ></div>
-                <span className="legend-label">
-                  {source.charAt(0).toUpperCase() + source.slice(1)}
-                </span>
-              </div>
-            );
-          })}
-          {/* Add 'Other' at the end */}
-          <div 
-            className={`legend-item ${filteredSources.has('other') ? 'active' : 'inactive'}`}
-            key="other"
-            onClick={() => toggleSourceFilter('other')}
-          >
-            <div 
-              className="legend-color" 
-              style={{ 
-                backgroundColor: `rgb(${POWER_PLANT_COLORS.other.join(',')})`
-              }}
-            ></div>
-            <span className="legend-label">Other</span>
-          </div>
-        </div>
-        
-        <div className="legend-section">
-          <h4>Infrastructure</h4>
-          {/* Update legend labels */}
-          <div className="legend-item">
-            <div className="legend-color" style={{ backgroundColor: `rgb(${CABLE_COLOR.join(',')})` }}></div>
-            <span className="legend-label">Terrestrial Links</span>
-          </div>
-        </div>
-      </div>
-      
-      {/* Enhanced Info Panel */}
-      {hoverInfo && (
-        <div className="info-panel">
-          <h3>{hoverInfo.name}</h3>
-          <p>Output: {hoverInfo.outputDisplay}</p>
-          <p>Source: {hoverInfo.source}</p>
-          
-          {/* Additional details from rawData */}
-          {hoverInfo.rawData && (
-            <>
-              {hoverInfo.rawData['City (Site Name)'] && <p>City: {hoverInfo.rawData['City (Site Name)']}</p>}
-              {hoverInfo.rawData['State / Province / Territory'] && <p>State/Province: {hoverInfo.rawData['State / Province / Territory']}</p>}
-              {hoverInfo.rawData['County'] && <p>County: {hoverInfo.rawData['County']}</p>}
-              {hoverInfo.rawData['Owner Name (Company)'] && <p>Owner: {hoverInfo.rawData['Owner Name (Company)']}</p>}
-              {hoverInfo.rawData['Operator Name'] && <p>Operator: {hoverInfo.rawData['Operator Name']}</p>}
-              {hoverInfo.rawData['Address'] && <p>Address: {hoverInfo.rawData['Address']}</p>}
-              {hoverInfo.rawData['Zip Code / Postal Code'] && <p>Postal Code: {hoverInfo.rawData['Zip Code / Postal Code']}</p>}
-              <p>Coordinates: {hoverInfo.coordinates[1].toFixed(4)}, {hoverInfo.coordinates[0].toFixed(4)}</p>
-            </>
-          )}
-        </div>
-      )}
+           <h3>{hoverInfo.name}</h3>
+           <p>Output: {hoverInfo.outputDisplay}</p>
+           <p>Source: {hoverInfo.source}</p>
+
+           {/* Additional details from rawData - shown when persistent */}
+           {isTooltipPersistent && hoverInfo.rawData && (
+             <>
+               {hoverInfo.rawData['City (Site Name)'] && <p>City: {hoverInfo.rawData['City (Site Name)']}</p>}
+               {hoverInfo.rawData['State / Province / Territory'] && <p>State/Province: {hoverInfo.rawData['State / Province / Territory']}</p>}
+               {hoverInfo.rawData['County'] && <p>County: {hoverInfo.rawData['County']}</p>}
+               {hoverInfo.rawData['Owner Name (Company)'] && <p>Owner: {hoverInfo.rawData['Owner Name (Company)']}</p>}
+               {hoverInfo.rawData['Operator Name'] && <p>Operator: {hoverInfo.rawData['Operator Name']}</p>}
+               {hoverInfo.rawData['Address'] && <p>Address: {hoverInfo.rawData['Address']}</p>}
+               {hoverInfo.rawData['Zip Code / Postal Code'] && <p>Postal Code: {hoverInfo.rawData['Zip Code / Postal Code']}</p>}
+               <p>Coordinates: {hoverInfo.coordinates[1].toFixed(4)}, {hoverInfo.coordinates[0].toFixed(4)}</p>
+
+               {/* CTA Buttons */}
+               <div className="cta-buttons">
+                 <button
+                   onClick={() => handleGoogleSearch(
+                     hoverInfo.name,
+                     hoverInfo.source,
+                     hoverInfo.rawData?.['Owner Name (Company)']
+                   )}
+                   aria-label={`Search for ${hoverInfo.name} powerplant on Google`}
+                 >
+                   <Search size={16} />
+                   View on Google
+                 </button>
+                 <button
+                   onClick={() => handleGoogleMaps(hoverInfo.coordinates)}
+                   aria-label={`View ${hoverInfo.name} location on Google Maps`}
+                 >
+                   <MapPin size={16} />
+                   View on Google Maps
+                 </button>
+               </div>
+             </>
+           )}
+         </div>
+       )}
     </div>
   );
 }

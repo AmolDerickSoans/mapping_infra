@@ -1,5 +1,6 @@
 import type { Cable } from '../models/Cable';
 import { processWfsCableData } from './geoJsonParser';
+import { CableCache, CacheManager } from './cache';
 
 // Test data for fallback - more realistic submarine cable data
 const testCables: any = {
@@ -61,43 +62,91 @@ const testCables: any = {
 };
 
 /**
- * Load submarine cable data from ITU WFS service
+ * Fetch fresh cable data from ITU WFS service
+ * @returns Promise resolving to array of Cable objects
+ */
+async function fetchFreshCableData(): Promise<Cable[]> {
+  // Use Vercel API route for proxying requests in both development and production
+  const baseUrl = '/itu-proxy/geoserver/itu-geocatalogue/ows';
+
+  const params = new URLSearchParams({
+    service: 'WFS',
+    version: '1.0.0',
+    request: 'GetFeature',
+    typeName: 'itu-geocatalogue:trx_geocatalogue',
+    outputFormat: 'application/json'
+  });
+
+  const url = `${baseUrl}?${params}`;
+
+  // Add a timeout to prevent hanging requests
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+  const response = await fetch(url, {
+    signal: controller.signal
+  });
+
+  clearTimeout(timeoutId);
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch submarine cable data: ${response.status} ${response.statusText}`);
+  }
+
+  const cableData = await response.json();
+  return processWfsCableData(cableData);
+}
+
+/**
+ * Load submarine cable data from ITU WFS service with caching
  * @returns Promise resolving to array of Cable objects
  */
 export async function loadWfsCableData(): Promise<Cable[]> {
+  // Try cache first
+  const cachedData = CableCache.get();
+  if (cachedData) {
+    console.log('Using cached cable data');
+    return cachedData;
+  }
+
+  // Fetch fresh data
   try {
-    // Use Vercel API route for proxying requests in both development and production
-    const baseUrl = '/api/wfs/geoserver/itu-geocatalogue/ows';
-    
-    const params = new URLSearchParams({
-      service: 'WFS',
-      version: '1.0.0',
-      request: 'GetFeature',
-      typeName: 'itu-geocatalogue:trx_geocatalogue',
-      outputFormat: 'application/json'
-    });
-    
-    const url = `${baseUrl}?${params}`;
-    
-    // Add a timeout to prevent hanging requests
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-    
-    const response = await fetch(url, {
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch submarine cable data: ${response.status} ${response.statusText}`);
+    console.log('Fetching fresh cable data from API');
+    const freshData = await fetchFreshCableData();
+
+    // Attempt to cache the data
+    const cacheResult = CableCache.set(freshData);
+    if (!cacheResult) {
+      console.warn('Failed to cache cable data - may be too large for localStorage');
     }
-    
-    const cableData = await response.json();
-    return processWfsCableData(cableData);
+
+    return freshData;
   } catch (error) {
-    console.warn('Failed to fetch submarine cable data, using test data:', error);
-    // Fallback to local test data
+    console.warn('Failed to fetch submarine cable data:', error);
+
+    // Try expired cache as fallback
+    const expiredCache = CableCache.get();
+    if (expiredCache) {
+      console.warn('Using expired cached cable data due to API failure');
+      return expiredCache;
+    }
+
+    // Ultimate fallback to local test data
+    console.log('Using local test cable data');
     return processWfsCableData(testCables);
   }
+}
+
+/**
+ * Clear the cached cable data
+ */
+export function clearCableCache(): void {
+  CableCache.clear();
+}
+
+/**
+ * Get cable cache statistics
+ */
+export function getCableCacheStats() {
+  return CacheManager.getCacheStats();
 }
