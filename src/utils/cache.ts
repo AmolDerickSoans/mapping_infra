@@ -30,7 +30,7 @@ export class CacheManager {
       localStorage.setItem(testKey, data);
       localStorage.removeItem(testKey);
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -40,7 +40,7 @@ export class CacheManager {
    */
   static getStorageUsage(): number {
     let total = 0;
-    for (let key in localStorage) {
+    for (const key of Object.keys(localStorage)) {
       if (key.startsWith(this.CACHE_PREFIX)) {
         const value = localStorage.getItem(key);
         if (value) {
@@ -54,7 +54,7 @@ export class CacheManager {
   /**
    * Compress data using LZString
    */
-  private static compressData(data: any): string {
+  private static compressData(data: unknown): string {
     return LZString.compress(JSON.stringify(data));
   }
 
@@ -89,7 +89,7 @@ export class CacheManager {
   /**
    * Store data in cache with compression
    */
-  static setCachedData(key: string, data: any, version: string = this.DEFAULT_VERSION): boolean {
+  static setCachedData(key: string, data: unknown, version: string = this.DEFAULT_VERSION): boolean {
     try {
       const originalData = JSON.stringify(data);
       const compressedData = this.compressData(data);
@@ -185,7 +185,7 @@ export class CacheManager {
     let entries = 0;
     let totalSize = 0;
 
-    for (let key in localStorage) {
+    for (const key of Object.keys(localStorage)) {
       if (key.startsWith(this.CACHE_PREFIX)) {
         entries++;
         const value = localStorage.getItem(key);

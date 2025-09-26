@@ -11,8 +11,8 @@ export function parsePowerPlantCSV(csvData: string): PowerPlant[] {
   
   return lines.slice(1).map((line, index) => {
     const values = line.split(',');
-    const entry: any = {};
-    
+    const entry: Record<string, string> = {};
+
     headers.forEach((header, i) => {
       entry[header.trim()] = values[i]?.trim() || '';
     });

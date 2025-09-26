@@ -1129,6 +1129,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding-bottom: 24px; /* Generous padding below slider */
 }
 
 .slider-container label {
