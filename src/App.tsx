@@ -5,14 +5,18 @@ import { ScatterplotLayer, PathLayer } from '@deck.gl/layers';
 import './App.css';
 import type { PowerPlant } from './models/PowerPlant';
 import type { Cable } from './models/Cable';
+
+
 import { loadWfsCableData } from './utils/wfsDataLoader';
 import { loadAndProcessAllPowerPlants } from './utils/unifiedPowerPlantProcessor';
 import { loadInfrastructureData } from './utils/dataLoader';
 import { isPointNearLine } from './utils/geoUtils';
+import type { LineSegment } from './utils/spatialIndex';
 import { createLineIndex, queryLineIndex } from './utils/spatialIndex';
 import { calculatePowerRange, type PowerRange } from './utils/powerRangeCalculator';
 import RBush from 'rbush';
-import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { useTheme } from './hooks/useTheme';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import SidePanel from './components/SidePanel';
@@ -71,7 +75,7 @@ function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [showPowerPlants, setShowPowerPlants] = useState<boolean>(true);
   const [showWfsCables, setShowWfsCables] = useState<boolean>(true);
-  const [hoverInfo, setHoverInfo] = useState<any>(null);
+  const [hoverInfo, setHoverInfo] = useState<PowerPlant | null>(null);
   // State for filtering power plants by source
   const [filteredSources, setFilteredSources] = useState<Set<string>>(new Set());
   // State for power output range filtering (0 MW to 10000 MW)
@@ -96,7 +100,7 @@ function App() {
     const handleSliderChange = useCallback((value: number) => {
       setSliderValue(value);
     }, []);
-  const [lineIndex, setLineIndex] = useState<RBush<any> | null>(null);
+  const [lineIndex, setLineIndex] = useState<RBush<LineSegment> | null>(null);
    const [powerRange, setPowerRange] = useState<PowerRange>({ min: 0, max: 10000 });
    // Circle sizing state variables as per MAP_FEATURES_DOCUMENTATION.md
    const [sizeMultiplier, setSizeMultiplier] = useState<number>(2);
@@ -325,8 +329,8 @@ function App() {
       },
       getFillColor: (d: PowerPlant) =>
         POWER_PLANT_COLORS[d.source] || POWER_PLANT_COLORS.other,
-      onHover: (info: any) => setHoverInfo(info.object),
-       onClick: (info: any) => {
+      onHover: (info: { object?: PowerPlant }) => setHoverInfo(info.object || null),
+       onClick: (info: { object?: PowerPlant }) => {
          if (info.object) {
            setHoverInfo(info.object);
            setIsTooltipPersistent(true);
@@ -341,7 +345,7 @@ function App() {
       getPath: (d: Cable) => d.coordinates,
       getColor: CABLE_COLOR, // Orange color
       getWidth: 2, // Thinner cables
-      onHover: (info: any) => setHoverInfo(info.object)
+      onHover: () => {}
     })
     ].filter(Boolean);
   }, [filteredPowerPlants, showPowerPlants, showWfsCables, wfsCables, sizeMultiplier, capacityWeight, sizeByOption, setHoverInfo, powerRange]);

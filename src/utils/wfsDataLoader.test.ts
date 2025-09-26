@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { processWfsCableData } from './geoJsonParser';
+import { processWfsCableData, type GeoJsonObject } from './geoJsonParser';
 
 // Mock test data
-const mockWfsData: any = {
+const mockWfsData: GeoJsonObject = {
   "type": "FeatureCollection",
   "features": [
     {
@@ -54,7 +54,7 @@ describe('processWfsCableData', () => {
   });
 
   it('should handle missing properties', () => {
-    const testData: any = {
+    const testData: GeoJsonObject = {
       "type": "FeatureCollection",
       "features": [
         {
@@ -77,10 +77,10 @@ describe('processWfsCableData', () => {
   });
 
   it('should handle empty or invalid data', () => {
-    const result = processWfsCableData(null as any);
+    const result = processWfsCableData(null as unknown as GeoJsonObject);
     expect(result).toEqual([]);
-    
-    const result2 = processWfsCableData({} as any);
+
+    const result2 = processWfsCableData({} as unknown as GeoJsonObject);
     expect(result2).toEqual([]);
   });
 });

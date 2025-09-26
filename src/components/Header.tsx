@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../hooks/useTheme';
 import { Globe, Settings, Sun, Moon } from 'lucide-react';
 
 const Header: React.FC = () => {

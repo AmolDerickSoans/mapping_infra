@@ -4,8 +4,8 @@ import type { TerrestrialLink } from '../models/TerrestrialLink';
 interface GeoJsonFeature {
   type: string;
   properties: {
-    id: string;
-    name: string;
+    id?: string;
+    name?: string;
     [key: string]: string | undefined;
   };
   geometry: {
@@ -14,7 +14,7 @@ interface GeoJsonFeature {
   };
 }
 
-interface GeoJsonObject {
+export interface GeoJsonObject {
   type: string;
   features: GeoJsonFeature[];
 }

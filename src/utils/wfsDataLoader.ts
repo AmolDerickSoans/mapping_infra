@@ -1,9 +1,10 @@
 import type { Cable } from '../models/Cable';
 import { processWfsCableData } from './geoJsonParser';
 import { CableCache, CacheManager } from './cache';
+import type { GeoJsonObject } from './geoJsonParser';
 
 // Test data for fallback - more realistic submarine cable data
-const testCables: any = {
+const testCables: GeoJsonObject = {
   "type": "FeatureCollection",
   "features": [
     {

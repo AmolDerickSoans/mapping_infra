@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Eye, List } from 'lucide-react';
 import type { PowerRange } from '../utils/powerRangeCalculator';
 import DualRangeSlider from './DualRangeSlider';
 import './LayersFiltersTab.css';
@@ -205,7 +204,7 @@ const LayersFiltersTab: React.FC<LayersFiltersTabProps> = ({
                 aria-label="View detailed list of nearby plants"
                 title="View detailed list of nearby plants"
               >
-                <List size={16} />
+                list 
               </button>
             )}
           </div>

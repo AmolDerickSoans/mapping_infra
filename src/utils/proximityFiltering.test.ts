@@ -1,4 +1,4 @@
-import { isPointNearLine, calculateDistance } from './geoUtils';
+import { isPointNearLine } from './geoUtils';
 
 describe('proximityFiltering', () => {
   it('should correctly identify power plants near terrestrial links', () => {

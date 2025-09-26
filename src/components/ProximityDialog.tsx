@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Download, Eye } from 'lucide-react';
+import { X, Download } from 'lucide-react';
 import type { PowerPlant } from '../models/PowerPlant';
 
 interface ProximityDialogProps {
@@ -62,7 +62,6 @@ Total Plants: ${nearbyPlants.length}
       <div className="proximity-dialog" onClick={(e) => e.stopPropagation()}>
         <div className="proximity-dialog-header">
           <h2>
-            <Eye size={20} />
             Plants within {proximityDistance} miles
           </h2>
           <button className="close-button" onClick={onClose} aria-label="Close dialog">

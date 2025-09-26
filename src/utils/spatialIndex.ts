@@ -3,7 +3,7 @@ import RBush from 'rbush';
 import type { Cable } from '../models/Cable';
 import type { TerrestrialLink } from '../models/TerrestrialLink';
 
-interface LineSegment {
+export interface LineSegment {
   minX: number;
   minY: number;
   maxX: number;

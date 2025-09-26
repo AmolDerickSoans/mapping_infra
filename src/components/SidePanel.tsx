@@ -4,6 +4,7 @@ import LayersFiltersTab from './LayersFiltersTab';
 import LegendTab from './LegendTab';
 import VisualizationTab from './VisualizationTab';
 import type { PowerRange } from '../utils/powerRangeCalculator';
+import type { PowerPlant } from '../models/PowerPlant';
 import { getCableCacheStats, clearCableCache } from '../utils/wfsDataLoader';
 import './SidePanel.css';
 
@@ -48,7 +49,7 @@ interface SidePanelProps {
    setShowSummerCapacity: (value: boolean) => void;
 
   // Data
-  powerPlants: any[];
+  powerPlants: PowerPlant[];
   allSourcesInData: string[];
   powerPlantCounts?: Record<string, number>;
 
@@ -184,7 +185,7 @@ const SidePanel: React.FC<SidePanelProps> = ({
           />
         );
 
-      case 'data':
+      case 'data': {
         const cacheStats = getCableCacheStats();
         return (
           <div className="tab-content-placeholder">
@@ -217,6 +218,7 @@ const SidePanel: React.FC<SidePanelProps> = ({
             </div>
           </div>
         );
+      }
 
       default:
         return null;
