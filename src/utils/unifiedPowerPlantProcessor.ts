@@ -229,6 +229,7 @@ function parseCsvRow(line: string): string[] {
 // Mapping function for energy sources to match existing source types
 function mapEnergySource(source: string): string {
   const sourceMap: Record<string, string> = {
+    // Existing mappings
     'Coal': 'coal',
     'Natural Gas': 'gas',
     'Nuclear': 'nuclear',
@@ -239,8 +240,45 @@ function mapEnergySource(source: string): string {
     'Biomass': 'biomass',
     'Geothermal': 'geothermal',
     'Tidal': 'tidal',
-    'Pumped-Storage Hydroelectric': 'hydro'
+    'Pumped-Storage Hydroelectric': 'hydro',
+
+    // Additional mappings for better coverage
+    'Gas': 'gas',
+    'Diesel': 'diesel',
+    'Oil': 'oil',
+    'Waste': 'waste',
+    'Biofuel': 'biofuel',
+    'Battery': 'battery',
+    'Pumped Storage': 'hydro',
+    'Run-of-river': 'hydro',
+    'Conventional Hydroelectric': 'hydro',
+    'Onshore Wind': 'wind',
+    'Offshore Wind': 'wind',
+    'Photovoltaic': 'solar',
+    'Concentrated Solar': 'solar',
+    'Combined Cycle': 'gas',
+    'Combustion Turbine': 'gas',
+    'Steam Turbine': 'coal',
+    'Internal Combustion': 'diesel',
+    'Landfill Gas': 'biomass',
+    'Municipal Solid Waste': 'waste',
+    'Wood': 'biomass',
+    'Other Biomass': 'biomass',
+    'Other Gases': 'gas'
   };
-  
-  return sourceMap[source] || 'other';
+
+  // Normalize source name for better matching
+  const normalized = source.toLowerCase().trim();
+
+  // Try exact match first
+  if (sourceMap[source]) return sourceMap[source];
+
+  // Try normalized match
+  const normalizedMatch = Object.keys(sourceMap).find(key =>
+    key.toLowerCase().trim() === normalized
+  );
+  if (normalizedMatch) return sourceMap[normalizedMatch];
+
+  // Default to 'other' if no match found
+  return 'other';
 }

@@ -60,6 +60,7 @@
 
 .layers-filters-tab .toggle-slider {
   position: relative;
+  display: inline-block;
   width: 44px;
   height: 24px;
   background-color: #ccc;

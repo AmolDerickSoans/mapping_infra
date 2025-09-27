@@ -3,6 +3,7 @@ import TabNavigation, { type TabItem } from './TabNavigation';
 import LayersFiltersTab from './LayersFiltersTab';
 import LegendTab from './LegendTab';
 import VisualizationTab from './VisualizationTab';
+import DataVisualizations from './DataVisualizations';
 import type { PowerRange } from '../utils/powerRangeCalculator';
 import type { PowerPlant } from '../models/PowerPlant';
 import { getCableCacheStats, clearCableCache } from '../utils/wfsDataLoader';
@@ -216,16 +217,8 @@ const SidePanel: React.FC<SidePanelProps> = ({
         return (
           <div className="tab-content-placeholder">
             <h3>Data & Export</h3>
-            <p>Data management and export functionality.</p>
+            <DataVisualizations />
             <div className="placeholder-content">
-              <h4>Data Statistics</h4>
-              <ul>
-                <li>Total Plants: {powerPlants.length}</li>
-                <li>Filtered Sources: {filteredSources.size}</li>
-                <li>Power Range: {minPowerOutput} - {maxPowerOutput} MW</li>
-                <li>Cable Records: {powerPlantCounts?.cables || 0}</li>
-              </ul>
-
               <h4>Cache Management</h4>
               <div className="cache-info">
                 <p>Cache Entries: {cacheStats.entries}</p>

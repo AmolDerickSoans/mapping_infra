@@ -109,7 +109,8 @@ const LegendTab: React.FC<LegendTabProps> = ({
       'diesel': 'Fossil Fuel',
       'waste': 'Fossil Fuel',
       'nuclear': 'Nuclear',
-      'battery': 'Storage'
+      'battery': 'Storage',
+      'other': 'Other'
     };
 
     processedSources.forEach(source => {
@@ -131,6 +132,17 @@ const LegendTab: React.FC<LegendTabProps> = ({
     // Clear all selected plants
     selectedPlantIds.forEach(id => onPlantDeselect(id));
     onApplySelection();
+  };
+
+  // Helper function for category name display with tooltips
+  const getDisplayCategoryName = (category: string): { display: string, full: string } => {
+    if (category.length <= 15) return { display: category, full: category };
+
+    // Truncate and add ellipsis
+    return {
+      display: category.substring(0, 15) + '...',
+      full: category
+    };
   };
 
   const activeCount = filteredSources.size;
@@ -198,9 +210,12 @@ const LegendTab: React.FC<LegendTabProps> = ({
       <div className="legend-content">
         {Object.entries(groupedSources).map(([category, sources]) => (
           <div key={category} className="legend-section">
-            {groupByCategory && (
-              <h4 className="category-title">{category}</h4>
-            )}
+            {groupByCategory && (() => {
+              const { display, full } = getDisplayCategoryName(category);
+              return (
+                <h4 className="category-title" title={full}>{display}</h4>
+              );
+            })()}
 
             <div className="legend-grid">
               {sources.map((source) => {
@@ -263,31 +278,7 @@ const LegendTab: React.FC<LegendTabProps> = ({
           </div>
         </div>
 
-        {/* Other category at the end */}
-        <div className="legend-section">
-          <div className="legend-grid">
-            <button
-              className={`legend-item ${filteredSources.has('other') ? 'active' : 'inactive'}`}
-              onClick={() => onToggleSourceFilter('other')}
-              aria-pressed={filteredSources.has('other')}
-              aria-label={`${filteredSources.has('other') ? 'Hide' : 'Show'} other power plants`}
-              title="Other power plants"
-            >
-              <div
-                className="legend-color"
-                style={{
-                  backgroundColor: `rgb(${POWER_PLANT_COLORS.other.join(',')})`
-                }}
-                aria-hidden="true"
-              />
-              <span className="legend-label">Other
-                      {powerPlantCounts && powerPlantCounts['other'] !== undefined && (
-                        <span className="legend-count"> ({powerPlantCounts['other']})</span>
-                      )}
-                    </span>
-            </button>
-          </div>
-        </div>
+
       </div>
     </div>
   );

@@ -103,7 +103,7 @@
   user-select: none;
 }
 
-.toggle-slider {
+.legend-tab .toggle-slider {
   position: relative;
   display: inline-block;
   width: 36px;
@@ -113,7 +113,7 @@
   transition: all 0.3s;
 }
 
-.toggle-slider::after {
+.legend-tab .toggle-slider::after {
   content: '';
   position: absolute;
   width: 16px;
@@ -125,11 +125,11 @@
   transition: all 0.3s;
 }
 
-.group-toggle input:checked + .toggle-slider {
+.legend-tab .group-toggle input:checked + .toggle-slider {
   background: #007bff;
 }
 
-.group-toggle input:checked + .toggle-slider::after {
+.legend-tab .group-toggle input:checked + .toggle-slider::after {
   left: 18px;
 }
 
