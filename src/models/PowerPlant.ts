@@ -6,7 +6,7 @@ export interface PowerPlant {
   source: string;
   coordinates: [number, number]; // [longitude, latitude]
   country: 'CA' | 'US';
-  capacityFactor?: number;
+  capacityFactor?: number | null;
   generation?: number;
   netSummerCapacity?: number;
   netWinterCapacity?: number;

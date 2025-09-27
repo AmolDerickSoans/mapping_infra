@@ -14,7 +14,7 @@ interface VisualizationTabProps {
 // Data availability status
 const DATA_AVAILABILITY = {
   nameplate_capacity: true,
-  capacity_factor: false, // Not populated in current data
+  capacity_factor: true, // Now populated with proxy calculations
   generation: false, // Not populated in current data
   net_summer_capacity: true, // Available for US plants from EIA data
   net_winter_capacity: true, // Available for US plants from EIA data

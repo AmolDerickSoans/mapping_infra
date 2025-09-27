@@ -75,6 +75,7 @@ export function parsePowerPlantCSV(csvText: string, type: 'large' | 'renewable')
       source: source,
       coordinates: [longitude, latitude],
       country: country,
+      capacityFactor: 100, // Proxy: assume 100% utilization for Canada plants
       rawData: entry
     };
 
@@ -128,6 +129,9 @@ export function parseEIAData(jsonData: EIAData): PowerPlant[] {
 
     const source = mapEnergySource(item['energy-source-desc'] || 'Other');
 
+    // Calculate proxy capacity factor: net summer capacity utilization ratio
+    const capacityFactor = nameplateCapacity > 0 ? (netSummerCapacity / nameplateCapacity) * 100 : null;
+
     const plant: PowerPlant = {
       id: `us-${item.plantid}-${item.generatorid}`,
       name: item.plantName || 'Unknown Plant',
@@ -136,6 +140,7 @@ export function parseEIAData(jsonData: EIAData): PowerPlant[] {
       source: source,
       coordinates: [longitude, latitude],
       country: 'US',
+      capacityFactor: capacityFactor,
       netSummerCapacity: netSummerCapacity,
       netWinterCapacity: netWinterCapacity,
       rawData: item
@@ -159,6 +164,7 @@ export function aggregatePowerPlants(plants: PowerPlant[]): PowerPlant[] {
     if (plantMap.has(key)) {
       // If we've seen this plant before, aggregate the capacity
       const existingPlant = plantMap.get(key)!;
+      const oldOutput = existingPlant.output;
       existingPlant.output += plant.output;
       existingPlant.outputDisplay = `${existingPlant.output.toFixed(1)} MW`;
 
@@ -168,6 +174,14 @@ export function aggregatePowerPlants(plants: PowerPlant[]): PowerPlant[] {
       }
       if (plant.netWinterCapacity) {
         existingPlant.netWinterCapacity = (existingPlant.netWinterCapacity || 0) + plant.netWinterCapacity;
+      }
+
+      // Aggregate capacity factor: weighted average
+      if (plant.capacityFactor !== undefined && plant.capacityFactor !== null &&
+          existingPlant.capacityFactor !== undefined && existingPlant.capacityFactor !== null) {
+        existingPlant.capacityFactor = ((oldOutput * existingPlant.capacityFactor) + (plant.output * plant.capacityFactor)) / existingPlant.output;
+      } else if (plant.capacityFactor !== undefined && plant.capacityFactor !== null) {
+        existingPlant.capacityFactor = plant.capacityFactor;
       }
 
       // Merge raw data, preserving the first entry's data but updating capacity
