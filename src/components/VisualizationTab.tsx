@@ -35,22 +35,22 @@ const VisualizationTab: React.FC<VisualizationTabProps> = ({
       {/* Base Size Control */}
       <div className="control-group">
         <label htmlFor="sizeMultiplier" className="control-label">
-          Base Size: {sizeMultiplier.toFixed(2)}
+          Base Size: {(sizeMultiplier * 2).toFixed(1)}
         </label>
-        <input
-          id="sizeMultiplier"
-          type="range"
-          min="1"
-          max="3"
-          step="0.01"
-          value={sizeMultiplier}
-          onChange={(e) => setSizeMultiplier(Number(e.target.value))}
-          className="slider"
-        />
-        <div className="slider-labels">
-          <span>1</span>
-          <span>3</span>
-        </div>
+         <input
+           id="sizeMultiplier"
+           type="range"
+           min="0.5"
+           max="2"
+           step="0.01"
+           value={sizeMultiplier}
+           onChange={(e) => setSizeMultiplier(Number(e.target.value))}
+           className="slider"
+         />
+         <div className="slider-labels">
+           <span>0.5</span>
+           <span>2</span>
+         </div>
       </div>
 
       {/* Data Emphasis Control */}

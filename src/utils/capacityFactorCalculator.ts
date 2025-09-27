@@ -1,5 +1,5 @@
 // Capacity Factor Calculator Agent
-// Processes EIA power plant data from 3.json to calculate capacity factors
+// Processes EIA power plant data from eia_aggregated_plant_capacity.json to calculate capacity factors
 // Note: Current data lacks generation information, so capacity factors cannot be calculated
 
 interface EIAData {
@@ -145,11 +145,11 @@ export function calculateCapacityFactors(jsonData: EIAData): CapacityFactorResul
 }
 
 /**
- * Load and process 3.json file
+ * Load and process eia_aggregated_plant_capacity.json file
  */
 export async function processEIAData(): Promise<CapacityFactorResult[]> {
   try {
-    const response = await fetch('/data/3.json');
+    const response = await fetch('/data/eia_aggregated_plant_capacity.json');
     if (!response.ok) {
       throw new Error(`Failed to load EIA data: ${response.statusText}`);
     }

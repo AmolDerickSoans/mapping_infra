@@ -156,9 +156,6 @@ function App() {
         // Load WFS submarine cable data (unchanged)
         const wfsCableData = await loadWfsCableData();
 
-        // Load terrestrial link data
-        const { terrestrialLinks: terrestrialLinkData } = await loadInfrastructureData('data/infrastructure.geojson');
-
         setPowerPlants(powerPlantData);
         setWfsCables(wfsCableData);
 
@@ -170,9 +167,8 @@ function App() {
         setMinPowerOutput(prev => Math.max(prev, calculatedRange.min));
         setMaxPowerOutput(prev => Math.min(prev, calculatedRange.max));
 
-        // Create spatial index for both terrestrial links and submarine cables
-        const allLines = [...terrestrialLinkData, ...wfsCableData];
-        const index = createLineIndex(allLines);
+        // Create spatial index for submarine cables only (removed terrestrial links)
+        const index = createLineIndex(wfsCableData);
         setLineIndex(index);
 
         // Initialize filtered sources with all unique sources from the data
@@ -202,7 +198,7 @@ function App() {
     // New power output range filtering
     const passesPowerOutputFilter = plant.output >= minPowerOutput && plant.output <= maxPowerOutput;
 
-    // New "nearby plants" filtering - check against both terrestrial links and submarine cables
+    // New "nearby plants" filtering - check against submarine cables only (removed terrestrial links)
     let passesNearbyFilter = true;
     if (showOnlyNearbyPlants && lineIndex) {
       const nearbySegments = queryLineIndex(lineIndex, plant.coordinates, proximityDistance);
@@ -237,7 +233,7 @@ function App() {
         return false;
       }
 
-      // Check proximity to infrastructure (use debounced distance for performance)
+      // Check proximity to submarine cables only (removed terrestrial links)
       const nearbySegments = queryLineIndex(lineIndex, plant.coordinates, debouncedDistance);
       for (const segment of nearbySegments) {
         if (isPointNearLine(plant.coordinates, segment, debouncedDistance)) {
@@ -264,7 +260,7 @@ function App() {
         return false;
       }
 
-      // Check proximity to infrastructure (use debounced distance for performance)
+      // Check proximity to submarine cables only (removed terrestrial links)
       const nearbySegments = queryLineIndex(lineIndex, plant.coordinates, debouncedDistance);
       for (const segment of nearbySegments) {
         if (isPointNearLine(plant.coordinates, segment, debouncedDistance)) {
@@ -320,15 +316,15 @@ function App() {
             value = d.output;
         }
 
-        // Log-scale normalization
-        const logValue = Math.log10(Math.max(value, 1));
-        const logMin = Math.log10(Math.max(powerRange.min, 1));
-        const logMax = Math.log10(Math.max(powerRange.max, 1));
+        // Sqrt-scale normalization for better variance
+        const sqrtValue = Math.sqrt(Math.max(value, 1));
+        const sqrtMin = Math.sqrt(Math.max(powerRange.min, 1));
+        const sqrtMax = Math.sqrt(Math.max(powerRange.max, 1));
         const normalized =
-          logMax > logMin ? (logValue - logMin) / (logMax - logMin) : 0;
+          sqrtMax > sqrtMin ? (sqrtValue - sqrtMin) / (sqrtMax - sqrtMin) : 0;
 
-        // Final radius: base size + emphasis factor
-        return sizeMultiplier + capacityWeight * normalized * 10;
+        // Final radius: adjusted base size + increased emphasis factor for more variance
+        return sizeMultiplier * 2 + capacityWeight * normalized * 25;
       },
       updateTriggers: {
         getRadius: [sizeMultiplier, capacityWeight, sizeByOption, powerRange],

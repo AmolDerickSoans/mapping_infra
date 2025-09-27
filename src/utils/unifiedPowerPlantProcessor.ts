@@ -15,7 +15,7 @@ export async function loadAndProcessAllPowerPlants(): Promise<PowerPlant[]> {
     const renewablePlants = parsePowerPlantCSV(renewablePlantsText, 'renewable');
 
     // Load US data from EIA JSON
-    const usPlantsResponse = await fetch('/data/3.json');
+    const usPlantsResponse = await fetch('/data/eia_aggregated_plant_capacity.json');
     const usPlantsData = await usPlantsResponse.json();
     const usPlants = parseEIAData(usPlantsData);
 
@@ -89,33 +89,29 @@ export function parsePowerPlantCSV(csvText: string, type: 'large' | 'renewable')
 }
 
 // EIA data structure interface
-interface EIAData {
-  response: {
-    data: Array<{
-      plantid: string;
-      generatorid: string;
-      plantName: string;
-      latitude: string;
-      longitude: string;
-      'nameplate-capacity-mw': string;
-      'net-summer-capacity-mw': string;
-      'net-winter-capacity-mw': string;
-      'energy-source-desc': string;
-      [key: string]: string;
-    }>;
-  };
+interface EIADataEntry {
+  plantid: string;
+  generatorid: string;
+  plantName: string;
+  latitude: string;
+  longitude: string;
+  'nameplate-capacity-mw': string;
+  'net-summer-capacity-mw': string;
+  'net-winter-capacity-mw': string;
+  'energy-source-desc': string;
+  [key: string]: string;
 }
 
-// Function to parse EIA data from 3.json for US power plants
-export function parseEIAData(jsonData: EIAData): PowerPlant[] {
+// Function to parse EIA data from eia_aggregated_plant_capacity.json for US power plants
+export function parseEIAData(jsonData: EIADataEntry[]): PowerPlant[] {
   const plants: PowerPlant[] = [];
 
-  if (!jsonData.response || !jsonData.response.data) {
-    console.error('Invalid EIA data structure');
+  if (!Array.isArray(jsonData)) {
+    console.error('Invalid EIA data structure: expected an array');
     return plants;
   }
 
-  for (const item of jsonData.response.data) {
+  for (const item of jsonData) {
     const latitude = parseFloat(item.latitude);
     const longitude = parseFloat(item.longitude);
     const nameplateCapacity = parseFloat(item['nameplate-capacity-mw']) || 0;
