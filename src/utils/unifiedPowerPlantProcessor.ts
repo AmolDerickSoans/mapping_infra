@@ -1,4 +1,5 @@
 import type { PowerPlant } from '../models/PowerPlant';
+import { loadEIADataEfficiently } from './efficientDataLoader';
 
 // Function to load and process power plants: Canada from CSV, US from EIA JSON
 export async function loadAndProcessAllPowerPlants(): Promise<PowerPlant[]> {
@@ -14,10 +15,8 @@ export async function loadAndProcessAllPowerPlants(): Promise<PowerPlant[]> {
     const largePlants = parsePowerPlantCSV(largePlantsText, 'large');
     const renewablePlants = parsePowerPlantCSV(renewablePlantsText, 'renewable');
 
-    // Load US data from EIA JSON
-    const usPlantsResponse = await fetch('/data/eia_aggregated_plant_capacity.json');
-    const usPlantsData = await usPlantsResponse.json();
-    const usPlants = parseEIAData(usPlantsData);
+    // Load US data from EIA JSON using efficient loader
+    const usPlants = await loadEIADataEfficiently();
 
     // Combine and aggregate plants
     const allPlants = [...largePlants, ...renewablePlants, ...usPlants];

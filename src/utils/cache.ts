@@ -20,6 +20,7 @@ export interface CacheEntry {
 export class CacheManager {
   private static readonly CACHE_PREFIX = 'mapping_infra_cache_';
   private static readonly DEFAULT_VERSION = 'v1';
+  private static readonly MAX_CHUNK_SIZE = 1000000; // 1MB chunks
 
   /**
    * Check if data will fit in localStorage
@@ -70,13 +71,118 @@ export class CacheManager {
   }
 
   /**
+   * Split large data into chunks for better localStorage handling
+   */
+  private static splitIntoChunks(data: string, chunkSize: number = this.MAX_CHUNK_SIZE): string[] {
+    const chunks: string[] = [];
+    for (let i = 0; i < data.length; i += chunkSize) {
+      chunks.push(data.slice(i, i + chunkSize));
+    }
+    return chunks;
+  }
+
+  /**
+   * Join chunks back into original data
+   */
+  private static joinChunks(chunks: string[]): string {
+    return chunks.join('');
+  }
+
+  /**
+   * Store large data by splitting into chunks
+   */
+  private static setChunkedData(key: string, data: string): boolean {
+    try {
+      const chunks = this.splitIntoChunks(data);
+      const chunkCount = chunks.length;
+      
+      // Store metadata
+      const metadataKey = `${this.CACHE_PREFIX}${key}_metadata`;
+      localStorage.setItem(metadataKey, JSON.stringify({ chunkCount }));
+      
+      // Store each chunk
+      for (let i = 0; i < chunkCount; i++) {
+        const chunkKey = `${this.CACHE_PREFIX}${key}_chunk_${i}`;
+        localStorage.setItem(chunkKey, chunks[i]);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error storing chunked data:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Retrieve large data from chunks
+   */
+  private static getChunkedData(key: string): string | null {
+    try {
+      // Get metadata
+      const metadataKey = `${this.CACHE_PREFIX}${key}_metadata`;
+      const metadataStr = localStorage.getItem(metadataKey);
+      if (!metadataStr) return null;
+      
+      const metadata = JSON.parse(metadataStr);
+      const { chunkCount } = metadata;
+      
+      // Retrieve each chunk
+      const chunks: string[] = [];
+      for (let i = 0; i < chunkCount; i++) {
+        const chunkKey = `${this.CACHE_PREFIX}${key}_chunk_${i}`;
+        const chunk = localStorage.getItem(chunkKey);
+        if (chunk === null) return null; // Missing chunk
+        chunks.push(chunk);
+      }
+      
+      return this.joinChunks(chunks);
+    } catch (error) {
+      console.error('Error retrieving chunked data:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Clear chunked data
+   */
+  private static clearChunkedData(key: string): void {
+    try {
+      // Get metadata
+      const metadataKey = `${this.CACHE_PREFIX}${key}_metadata`;
+      const metadataStr = localStorage.getItem(metadataKey);
+      if (!metadataStr) return;
+      
+      const metadata = JSON.parse(metadataStr);
+      const { chunkCount } = metadata;
+      
+      // Clear metadata
+      localStorage.removeItem(metadataKey);
+      
+      // Clear each chunk
+      for (let i = 0; i < chunkCount; i++) {
+        const chunkKey = `${this.CACHE_PREFIX}${key}_chunk_${i}`;
+        localStorage.removeItem(chunkKey);
+      }
+    } catch (error) {
+      console.error('Error clearing chunked data:', error);
+    }
+  }
+
+  /**
    * Get cached data by key
    */
   static getCachedData(key: string): CacheEntry | null {
     try {
       const fullKey = this.CACHE_PREFIX + key;
       const cached = localStorage.getItem(fullKey);
-      if (!cached) return null;
+      if (!cached) {
+        // Try chunked data
+        const chunkedData = this.getChunkedData(key);
+        if (chunkedData) {
+          return JSON.parse(chunkedData);
+        }
+        return null;
+      }
 
       const entry: CacheEntry = JSON.parse(cached);
       return entry;
@@ -93,6 +199,16 @@ export class CacheManager {
     try {
       const originalData = JSON.stringify(data);
       const compressedData = this.compressData(data);
+
+      // Check if data is too large for single localStorage entry
+      if (compressedData.length > this.MAX_CHUNK_SIZE) {
+        console.log(`Data too large for single entry (${compressedData.length} bytes), using chunked storage`);
+        const fullKey = this.CACHE_PREFIX + key;
+        // Clear any existing single entry
+        localStorage.removeItem(fullKey);
+        // Store as chunks
+        return this.setChunkedData(key, compressedData);
+      }
 
       // Check if compressed data will fit
       if (!this.willFitInStorage(compressedData)) {
@@ -112,6 +228,8 @@ export class CacheManager {
       };
 
       const fullKey = this.CACHE_PREFIX + key;
+      // Clear any existing chunked data
+      this.clearChunkedData(key);
       localStorage.setItem(fullKey, JSON.stringify(entry));
 
       console.log(`Cached data: ${key} (${originalData.length} → ${compressedData.length} bytes, ${(compressedData.length / originalData.length * 100).toFixed(1)}% of original)`);
@@ -160,6 +278,8 @@ export class CacheManager {
       if (key) {
         const fullKey = this.CACHE_PREFIX + key;
         localStorage.removeItem(fullKey);
+        // Also clear chunked data
+        this.clearChunkedData(key);
         console.log(`Cleared cache: ${key}`);
       } else {
         // Clear all cache entries
