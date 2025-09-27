@@ -64,7 +64,6 @@ interface SidePanelProps {
   selectedPlantIds: Set<string>;
   onPlantSelect: (plantId: string) => void;
   onPlantDeselect: (plantId: string) => void;
-  onClearSelection: () => void;
   onApplySelection: () => void;
 }
 
@@ -113,6 +112,12 @@ const SidePanel: React.FC<SidePanelProps> = ({
   powerPlants,
   allSourcesInData,
   powerPlantCounts,
+
+  // Search functionality
+  selectedPlantIds,
+  onPlantSelect,
+  onPlantDeselect,
+  onApplySelection,
 
   // UI
   isCollapsed = false,
@@ -175,16 +180,21 @@ const SidePanel: React.FC<SidePanelProps> = ({
           />
         );
 
-      case 'legend':
+       case 'legend':
         return (
-          <LegendTab
-            allSourcesInData={allSourcesInData}
-            filteredSources={filteredSources}
-            onToggleSourceFilter={onToggleSourceFilter}
-            showWfsCables={showWfsCables}
-            onToggleWfsCables={onToggleWfsCables}
-            powerPlantCounts={powerPlantCounts}
-          />
+           <LegendTab
+             allSourcesInData={allSourcesInData}
+             filteredSources={filteredSources}
+             onToggleSourceFilter={onToggleSourceFilter}
+             showWfsCables={showWfsCables}
+             onToggleWfsCables={onToggleWfsCables}
+             powerPlantCounts={powerPlantCounts}
+             powerPlants={powerPlants}
+             selectedPlantIds={selectedPlantIds}
+             onPlantSelect={onPlantSelect}
+             onPlantDeselect={onPlantDeselect}
+             onApplySelection={onApplySelection}
+           />
         );
 
       case 'visualization':

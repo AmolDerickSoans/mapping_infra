@@ -9,6 +9,25 @@ interface StatusDropdownProps {
   isOpen: boolean;
 }
 
+// Map long status names to short codes
+const getShortStatus = (status: string): string => {
+  const statusMap: Record<string, string> = {
+    'Operating': 'OP',
+    'Planned': 'PL',
+    'Retired': 'RT',
+    'Under Construction': 'UC',
+    'Cancelled': 'CN',
+    'Suspended': 'SP',
+    'Standby': 'SB',
+    'Out of Service': 'OOS',
+    'Mothballed': 'MB',
+    'Decommissioned': 'DC',
+    'N/A': 'N/A'
+  };
+
+  return statusMap[status] || status.substring(0, 4).toUpperCase(); // Fallback to first 4 chars uppercase
+};
+
 const StatusDropdown: React.FC<StatusDropdownProps> = ({
   allStatuses,
   filteredStatuses,
@@ -45,7 +64,7 @@ const StatusDropdown: React.FC<StatusDropdownProps> = ({
               checked={filteredStatuses.has(status)}
               onChange={() => onToggleStatus(status)}
             />
-            <span className="item-text">{status}</span>
+            <span className="item-text" title={status}>{getShortStatus(status)}</span>
           </label>
         ))}
       </div>

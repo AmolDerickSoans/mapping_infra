@@ -5,6 +5,7 @@ import StatusChip from './StatusChip';
 import StatusDropdown from './StatusDropdown';
 import './LayersFiltersTab.css';
 import './StatusComponents.css';
+import './StatusComponents.css';
 
 interface LayersFiltersTabProps {
   // Layer visibility

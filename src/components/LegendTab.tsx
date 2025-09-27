@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import './LegendTab.css';
+import type { PowerPlant } from '../models/PowerPlant';
+import PlantSearch from './PlantSearch';
 
 interface LegendTabProps {
   allSourcesInData: string[];
@@ -8,6 +10,13 @@ interface LegendTabProps {
   showWfsCables: boolean;
   onToggleWfsCables: () => void;
   powerPlantCounts?: Record<string, number>;
+
+  // Search functionality
+  powerPlants: PowerPlant[];
+  selectedPlantIds: Set<string>;
+  onPlantSelect: (plantId: string) => void;
+  onPlantDeselect: (plantId: string) => void;
+  onApplySelection: () => void;
 }
 
 const LegendTab: React.FC<LegendTabProps> = ({
@@ -17,6 +26,11 @@ const LegendTab: React.FC<LegendTabProps> = ({
   showWfsCables,
   onToggleWfsCables,
   powerPlantCounts = {},
+  powerPlants,
+  selectedPlantIds,
+  onPlantSelect,
+  onPlantDeselect,
+  onApplySelection,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'active'>('name');
@@ -113,6 +127,12 @@ const LegendTab: React.FC<LegendTabProps> = ({
     return groups;
   }, [processedSources, groupByCategory]);
 
+  const handleClearPlantSelection = () => {
+    // Clear all selected plants
+    selectedPlantIds.forEach(id => onPlantDeselect(id));
+    onApplySelection();
+  };
+
   const activeCount = filteredSources.size;
   const totalCount = allSourcesInData.length;
 
@@ -161,6 +181,17 @@ const LegendTab: React.FC<LegendTabProps> = ({
             {activeCount} of {totalCount} types active
           </span>
         </div>
+      </div>
+
+      {/* Plant Search Section with improved UI */}
+      <div className="plant-search-section">
+        <PlantSearch
+          powerPlants={powerPlants}
+          selectedPlantIds={selectedPlantIds}
+          onPlantSelect={onPlantSelect}
+          onPlantDeselect={onPlantDeselect}
+          onClearSelection={handleClearPlantSelection}
+        />
       </div>
 
       {/* Legend Content */}

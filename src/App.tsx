@@ -155,12 +155,9 @@ function App() {
     });
   };
 
-  const handleClearSelection = () => {
-    setSelectedPlantIds(new Set());
-  };
-
   const handleApplySelection = () => {
-    // Selection is already applied through state update
+    // Selection is automatically applied through state update
+    // This function is kept for compatibility with the existing interface
   };
 
   // CTA handler functions
@@ -228,7 +225,7 @@ function App() {
     loadData();
   }, []);
 
-  // Filter power plants based on selected sources, countries, power output range, and proximity
+  // Filter power plants based on selected sources, countries, power output range, proximity, status, and selected plant IDs
   const filteredPowerPlants = powerPlants.filter(plant => {
     // Existing source filtering
     const passesSourceFilter = filteredSources.has(plant.source) || plant.source === 'other';
@@ -245,6 +242,9 @@ function App() {
     const plantStatus = plant.rawData?.statusDescription || 'N/A';
     const passesStatusFilter = filteredStatuses.has(plantStatus);
 
+    // Plant selection filtering - if any plants are selected, only show those
+    const passesPlantSelectionFilter = selectedPlantIds.size === 0 || selectedPlantIds.has(plant.id);
+
     // New "nearby plants" filtering - check against submarine cables only (removed terrestrial links)
     let passesNearbyFilter = true;
     if (showOnlyNearbyPlants && lineIndex) {
@@ -258,7 +258,7 @@ function App() {
       }
     }
 
-    return passesSourceFilter && passesCountryFilter && passesPowerOutputFilter && passesNearbyFilter && passesStatusFilter;
+    return passesSourceFilter && passesCountryFilter && passesPowerOutputFilter && passesNearbyFilter && passesStatusFilter && passesPlantSelectionFilter;
   });
   
   // Get all unique sources from the data for the legend
@@ -470,7 +470,6 @@ function App() {
         selectedPlantIds={selectedPlantIds}
         onPlantSelect={handlePlantSelect}
         onPlantDeselect={handlePlantDeselect}
-        onClearSelection={handleClearSelection}
         onApplySelection={handleApplySelection}
       />
 

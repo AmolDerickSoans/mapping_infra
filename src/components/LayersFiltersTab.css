@@ -42,7 +42,7 @@
 }
 
 /* Toggle Switches */
-.toggle-item {
+.layers-filters-tab .toggle-item {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -51,23 +51,24 @@
   padding: 8px 0;
 }
 
-.toggle-input {
+.layers-filters-tab .toggle-input {
   position: absolute;
   opacity: 0;
   width: 0;
   height: 0;
 }
 
-.toggle-slider {
+.layers-filters-tab .toggle-slider {
   position: relative;
   width: 44px;
   height: 24px;
   background-color: #ccc;
   border-radius: 24px;
   transition: 0.3s;
+  flex-shrink: 0;
 }
 
-.toggle-slider::before {
+.layers-filters-tab .toggle-slider::before {
   content: '';
   position: absolute;
   height: 18px;
@@ -79,21 +80,21 @@
   transition: 0.3s;
 }
 
-.toggle-input:checked + .toggle-slider {
+.layers-filters-tab .toggle-input:checked + .toggle-slider {
   background-color: #007bff;
 }
 
-.toggle-input:checked + .toggle-slider::before {
+.layers-filters-tab .toggle-input:checked + .toggle-slider::before {
   transform: translateX(20px);
 }
 
-.toggle-label {
+.layers-filters-tab .toggle-label {
   font-size: 14px;
   color: #333;
   flex: 1;
 }
 
-.dark .toggle-label {
+.dark .layers-filters-tab .toggle-label {
   color: #ccc;
 }
 
