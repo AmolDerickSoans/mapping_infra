@@ -9,7 +9,6 @@ import type { Cable } from './models/Cable';
 
 import { loadWfsCableData } from './utils/wfsDataLoader';
 import { loadAndProcessAllPowerPlants } from './utils/unifiedPowerPlantProcessor';
-import { loadInfrastructureData } from './utils/dataLoader';
 import { isPointNearLine } from './utils/geoUtils';
 import type { LineSegment } from './utils/spatialIndex';
 import { createLineIndex, queryLineIndex } from './utils/spatialIndex';
@@ -104,13 +103,19 @@ function App() {
    const [powerRange, setPowerRange] = useState<PowerRange>({ min: 0, max: 10000 });
    // Circle sizing state variables as per MAP_FEATURES_DOCUMENTATION.md
    const [sizeMultiplier, setSizeMultiplier] = useState<number>(2);
-    const [capacityWeight, setCapacityWeight] = useState<number>(0.1);
+    const [capacityWeight, setCapacityWeight] = useState<number>(1);
     const [sizeByOption, setSizeByOption] = useState<SizeByOption>('nameplate_capacity');
     const [showSummerCapacity, setShowSummerCapacity] = useState<boolean>(false);
      // State for persistent tooltip
      const [isTooltipPersistent, setIsTooltipPersistent] = useState<boolean>(false);
      // State for proximity dialog
      const [isProximityDialogOpen, setIsProximityDialogOpen] = useState<boolean>(false);
+  // State for status filtering
+  const [allStatuses, setAllStatuses] = useState<string[]>([]);
+  const [filteredStatuses, setFilteredStatuses] = useState<Set<string>>(new Set());
+
+  // State for plant search and selection
+  const [selectedPlantIds, setSelectedPlantIds] = useState<Set<string>>(new Set());
 
   // Toggle source filter
   const toggleSourceFilter = (source: string) => {
@@ -124,9 +129,42 @@ function App() {
       return newSet;
     });
   };
+ // Toggle status filter
+ const toggleStatusFilter = (status: string) => {
+  setFilteredStatuses(prev => {
+    const newSet = new Set(prev);
+    if (newSet.has(status)) {
+      newSet.delete(status);
+    } else {
+      newSet.add(status);
+    }
+    return newSet;
+  });
+};
 
-   // CTA handler functions
-   const handleGoogleSearch = (plantName: string, source?: string, owner?: string) => {
+  // Handlers for plant search and selection
+  const handlePlantSelect = (plantId: string) => {
+    setSelectedPlantIds(prev => new Set(prev).add(plantId));
+  };
+
+  const handlePlantDeselect = (plantId: string) => {
+    setSelectedPlantIds(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(plantId);
+      return newSet;
+    });
+  };
+
+  const handleClearSelection = () => {
+    setSelectedPlantIds(new Set());
+  };
+
+  const handleApplySelection = () => {
+    // Selection is already applied through state update
+  };
+
+  // CTA handler functions
+  const handleGoogleSearch = (plantName: string, source?: string, owner?: string) => {
      // Build search query with context: name + source + owner + "powerplant"
      const searchTerms = [plantName];
      if (source) searchTerms.push(source);
@@ -175,6 +213,11 @@ function App() {
         const uniqueSources = new Set(powerPlantData.map(plant => plant.source));
         console.log('Unique sources in data:', Array.from(uniqueSources));
         setFilteredSources(new Set(Array.from(uniqueSources).filter(source => source !== 'other')));
+ // Extract and set all unique statuses
+ const statuses = new Set(powerPlantData.map(p => p.rawData?.statusDescription || 'N/A'));
+ const sortedStatuses = Array.from(statuses).sort();
+ setAllStatuses(sortedStatuses);
+ setFilteredStatuses(new Set(sortedStatuses));
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -198,6 +241,10 @@ function App() {
     // New power output range filtering
     const passesPowerOutputFilter = plant.output >= minPowerOutput && plant.output <= maxPowerOutput;
 
+    // Status filtering
+    const plantStatus = plant.rawData?.statusDescription || 'N/A';
+    const passesStatusFilter = filteredStatuses.has(plantStatus);
+
     // New "nearby plants" filtering - check against submarine cables only (removed terrestrial links)
     let passesNearbyFilter = true;
     if (showOnlyNearbyPlants && lineIndex) {
@@ -211,7 +258,7 @@ function App() {
       }
     }
 
-    return passesSourceFilter && passesCountryFilter && passesPowerOutputFilter && passesNearbyFilter;
+    return passesSourceFilter && passesCountryFilter && passesPowerOutputFilter && passesNearbyFilter && passesStatusFilter;
   });
   
   // Get all unique sources from the data for the legend
@@ -417,7 +464,15 @@ function App() {
         powerPlants={powerPlants}
         allSourcesInData={allSourcesInData}
         powerPlantCounts={powerPlantCounts}
-       />
+        allStatuses={allStatuses}
+        filteredStatuses={filteredStatuses}
+        onToggleStatusFilter={toggleStatusFilter}
+        selectedPlantIds={selectedPlantIds}
+        onPlantSelect={handlePlantSelect}
+        onPlantDeselect={handlePlantDeselect}
+        onClearSelection={handleClearSelection}
+        onApplySelection={handleApplySelection}
+      />
 
        {/* Proximity Dialog */}
        <ProximityDialog
@@ -449,6 +504,21 @@ function App() {
             <h3>{hoverInfo.name}</h3>
             <p>Output: {hoverInfo.outputDisplay}</p>
             <p>Source: {hoverInfo.source}</p>
+            {hoverInfo.rawData?.technology && (
+              <p style={{ display: 'flex', alignItems: 'center' }}>
+                Technology: {hoverInfo.rawData.technology}
+                <span
+                  style={{
+                    display: 'inline-block',
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    backgroundColor: `rgb(${POWER_PLANT_COLORS[hoverInfo.source]?.join(',') || '128,128,128'})`,
+                    marginLeft: '8px'
+                  }}
+                ></span>
+              </p>
+            )}
             {hoverInfo.netSummerCapacity && <p>Net Summer Capacity: {hoverInfo.netSummerCapacity.toFixed(1)} MW</p>}
             {hoverInfo.netWinterCapacity && <p>Net Winter Capacity: {hoverInfo.netWinterCapacity.toFixed(1)} MW</p>}
 

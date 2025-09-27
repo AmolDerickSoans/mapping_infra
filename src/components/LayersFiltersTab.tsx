@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import type { PowerRange } from '../utils/powerRangeCalculator';
 import DualRangeSlider from './DualRangeSlider';
+import StatusChip from './StatusChip';
+import StatusDropdown from './StatusDropdown';
 import './LayersFiltersTab.css';
+import './StatusComponents.css';
 
 interface LayersFiltersTabProps {
   // Layer visibility
@@ -15,6 +18,11 @@ interface LayersFiltersTabProps {
   showAmericanPlants: boolean;
   onToggleCanadianPlants: () => void;
   onToggleAmericanPlants: () => void;
+
+  // Status filtering
+  allStatuses: string[];
+  filteredStatuses: Set<string>;
+  onToggleStatusFilter: (status: string) => void;
 
   // Power output filtering
   minPowerOutput: number;
@@ -45,6 +53,9 @@ const LayersFiltersTab: React.FC<LayersFiltersTabProps> = ({
   showAmericanPlants,
   onToggleCanadianPlants,
   onToggleAmericanPlants,
+  allStatuses,
+  filteredStatuses,
+  onToggleStatusFilter,
   minPowerOutput,
   maxPowerOutput,
   onMinPowerOutputChange,
@@ -58,6 +69,7 @@ const LayersFiltersTab: React.FC<LayersFiltersTabProps> = ({
    onOpenProximityDialog,
 }) => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [powerRangePreset, setPowerRangePreset] = useState<PowerRangePreset | null>(null);
 
   // Power range presets
@@ -97,6 +109,24 @@ const LayersFiltersTab: React.FC<LayersFiltersTabProps> = ({
   };
 
   const activePreset = getActivePreset();
+
+  const toggleStatusDropdown = () => {
+    setIsStatusDropdownOpen(!isStatusDropdownOpen);
+  };
+
+  const handleSelectAllStatuses = () => {
+    allStatuses.forEach(status => {
+      if (!filteredStatuses.has(status)) {
+        onToggleStatusFilter(status);
+      }
+    });
+  };
+
+  const handleClearAllStatuses = () => {
+    filteredStatuses.forEach(status => {
+      onToggleStatusFilter(status);
+    });
+  };
 
   return (
     <div className="layers-filters-tab">
@@ -152,6 +182,42 @@ const LayersFiltersTab: React.FC<LayersFiltersTabProps> = ({
             >
               🇺🇸 United States
             </button>
+          </div>
+        </div>
+
+        {/* Status Filter */}
+        <div className="control-group">
+          <label className="control-label">Status</label>
+          <div className="status-selector">
+            <div className="selected-chips">
+              {Array.from(filteredStatuses).map(status => (
+                <StatusChip
+                  key={status}
+                  status={status}
+                  onRemove={onToggleStatusFilter}
+                />
+              ))}
+              <button
+                className="dropdown-trigger"
+                onClick={toggleStatusDropdown}
+                aria-expanded={isStatusDropdownOpen}
+                aria-haspopup="listbox"
+              >
+                {filteredStatuses.size > 0
+                  ? `${filteredStatuses.size} selected`
+                  : 'Select Statuses'
+                }
+                <span className="dropdown-arrow">{isStatusDropdownOpen ? '▲' : '▼'}</span>
+              </button>
+            </div>
+            <StatusDropdown
+              allStatuses={allStatuses}
+              filteredStatuses={filteredStatuses}
+              onToggleStatus={onToggleStatusFilter}
+              onSelectAll={handleSelectAllStatuses}
+              onClearAll={handleClearAllStatuses}
+              isOpen={isStatusDropdownOpen}
+            />
           </div>
         </div>
 

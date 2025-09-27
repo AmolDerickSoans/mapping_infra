@@ -18,6 +18,9 @@ interface SidePanelProps {
   // Filtering state
   filteredSources: Set<string>;
   onToggleSourceFilter: (source: string) => void;
+  allStatuses: string[];
+  filteredStatuses: Set<string>;
+  onToggleStatusFilter: (status: string) => void;
   showCanadianPlants: boolean;
   showAmericanPlants: boolean;
   onToggleCanadianPlants: () => void;
@@ -56,6 +59,13 @@ interface SidePanelProps {
   // UI state
   isCollapsed?: boolean;
   onToggleCollapsed?: () => void;
+
+  // Search functionality
+  selectedPlantIds: Set<string>;
+  onPlantSelect: (plantId: string) => void;
+  onPlantDeselect: (plantId: string) => void;
+  onClearSelection: () => void;
+  onApplySelection: () => void;
 }
 
 const SidePanel: React.FC<SidePanelProps> = ({
@@ -68,6 +78,9 @@ const SidePanel: React.FC<SidePanelProps> = ({
   // Filtering
   filteredSources,
   onToggleSourceFilter,
+  allStatuses,
+  filteredStatuses,
+  onToggleStatusFilter,
   showCanadianPlants,
   showAmericanPlants,
   onToggleCanadianPlants,
@@ -141,6 +154,9 @@ const SidePanel: React.FC<SidePanelProps> = ({
             showWfsCables={showWfsCables}
             onTogglePowerPlants={onTogglePowerPlants}
             onToggleWfsCables={onToggleWfsCables}
+            allStatuses={allStatuses}
+            filteredStatuses={filteredStatuses}
+            onToggleStatusFilter={onToggleStatusFilter}
             showCanadianPlants={showCanadianPlants}
             showAmericanPlants={showAmericanPlants}
             onToggleCanadianPlants={onToggleCanadianPlants}
@@ -173,16 +189,16 @@ const SidePanel: React.FC<SidePanelProps> = ({
 
       case 'visualization':
         return (
-          <VisualizationTab
-            sizeMultiplier={sizeMultiplier}
-            setSizeMultiplier={setSizeMultiplier}
-            capacityWeight={capacityWeight}
-            setCapacityWeight={setCapacityWeight}
-            sizeByOption={sizeByOption}
-            setSizeByOption={setSizeByOption}
-            showSummerCapacity={showSummerCapacity}
-            setShowSummerCapacity={setShowSummerCapacity}
-          />
+              <VisualizationTab
+                sizeMultiplier={sizeMultiplier}
+                setSizeMultiplier={setSizeMultiplier}
+                capacityWeight={capacityWeight}
+                setCapacityWeight={setCapacityWeight}
+                sizeByOption={sizeByOption}
+                setSizeByOption={setSizeByOption}
+                showSummerCapacity={showSummerCapacity}
+                setShowSummerCapacity={setShowSummerCapacity}
+              />
         );
 
       case 'data': {
