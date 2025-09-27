@@ -24,7 +24,7 @@ import ProximityDialog from './components/ProximityDialog';
 import { Search, MapPin, X } from 'lucide-react';
 
 // SizeByOption type as per MAP_FEATURES_DOCUMENTATION.md
-type SizeByOption = 'nameplate_capacity' | 'capacity_factor' | 'generation';
+type SizeByOption = 'nameplate_capacity' | 'capacity_factor' | 'generation' | 'net_summer_capacity' | 'net_winter_capacity';
 
 // Custom hook for debouncing values
 function useDebounce<T>(value: T, delay: number): T {
@@ -310,6 +310,12 @@ function App() {
           case 'generation':
             value = d.generation || d.output;
             break;
+          case 'net_summer_capacity':
+            value = d.netSummerCapacity || d.output;
+            break;
+          case 'net_winter_capacity':
+            value = d.netWinterCapacity || d.output;
+            break;
           default:
             value = d.output;
         }
@@ -444,9 +450,11 @@ function App() {
              </button>
            )}
 
-           <h3>{hoverInfo.name}</h3>
-           <p>Output: {hoverInfo.outputDisplay}</p>
-           <p>Source: {hoverInfo.source}</p>
+            <h3>{hoverInfo.name}</h3>
+            <p>Output: {hoverInfo.outputDisplay}</p>
+            <p>Source: {hoverInfo.source}</p>
+            {hoverInfo.netSummerCapacity && <p>Net Summer Capacity: {hoverInfo.netSummerCapacity.toFixed(1)} MW</p>}
+            {hoverInfo.netWinterCapacity && <p>Net Winter Capacity: {hoverInfo.netWinterCapacity.toFixed(1)} MW</p>}
 
            {/* Additional details from rawData - shown when persistent */}
            {isTooltipPersistent && hoverInfo.rawData && (

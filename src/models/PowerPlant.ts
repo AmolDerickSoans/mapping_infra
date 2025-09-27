@@ -8,6 +8,8 @@ export interface PowerPlant {
   country: 'CA' | 'US';
   capacityFactor?: number;
   generation?: number;
+  netSummerCapacity?: number;
+  netWinterCapacity?: number;
   // Additional fields for hover panel
   rawData?: Record<string, string>; // Store all original CSV fields
 }

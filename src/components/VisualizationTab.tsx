@@ -5,8 +5,8 @@ interface VisualizationTabProps {
   setSizeMultiplier: (value: number) => void;
   capacityWeight: number;
   setCapacityWeight: (value: number) => void;
-  sizeByOption: 'nameplate_capacity' | 'capacity_factor' | 'generation';
-  setSizeByOption: (value: 'nameplate_capacity' | 'capacity_factor' | 'generation') => void;
+  sizeByOption: 'nameplate_capacity' | 'capacity_factor' | 'generation' | 'net_summer_capacity' | 'net_winter_capacity';
+  setSizeByOption: (value: 'nameplate_capacity' | 'capacity_factor' | 'generation' | 'net_summer_capacity' | 'net_winter_capacity') => void;
   showSummerCapacity: boolean;
   setShowSummerCapacity: (value: boolean) => void;
 }
@@ -16,6 +16,8 @@ const DATA_AVAILABILITY = {
   nameplate_capacity: true,
   capacity_factor: false, // Not populated in current data
   generation: false, // Not populated in current data
+  net_summer_capacity: true, // Available for US plants from EIA data
+  net_winter_capacity: true, // Available for US plants from EIA data
 };
 
 const VisualizationTab: React.FC<VisualizationTabProps> = ({
@@ -93,6 +95,8 @@ const VisualizationTab: React.FC<VisualizationTabProps> = ({
           <option value="generation" disabled={!DATA_AVAILABILITY.generation}>
             Generation {DATA_AVAILABILITY.generation ? '' : '(data unavailable)'}
           </option>
+          <option value="net_summer_capacity">Net Summer Capacity</option>
+          <option value="net_winter_capacity">Net Winter Capacity</option>
         </select>
         {sizeByOption !== 'nameplate_capacity' && !DATA_AVAILABILITY[sizeByOption] && (
           <p className="control-description warning">

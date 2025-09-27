@@ -43,8 +43,8 @@ interface SidePanelProps {
    setSizeMultiplier: (value: number) => void;
    capacityWeight: number;
    setCapacityWeight: (value: number) => void;
-   sizeByOption: 'nameplate_capacity' | 'capacity_factor' | 'generation';
-   setSizeByOption: (value: 'nameplate_capacity' | 'capacity_factor' | 'generation') => void;
+    sizeByOption: 'nameplate_capacity' | 'capacity_factor' | 'generation' | 'net_summer_capacity' | 'net_winter_capacity';
+    setSizeByOption: (value: 'nameplate_capacity' | 'capacity_factor' | 'generation' | 'net_summer_capacity' | 'net_winter_capacity') => void;
    showSummerCapacity: boolean;
    setShowSummerCapacity: (value: boolean) => void;
 
