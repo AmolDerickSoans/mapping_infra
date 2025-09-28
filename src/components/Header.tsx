@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTheme } from '../hooks/useTheme';
 import { Globe, Settings, Sun, Moon } from 'lucide-react';
+import { NavLink } from 'react-router-dom'; // Import NavLink
 
 const Header: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
@@ -9,13 +10,21 @@ const Header: React.FC = () => {
     <header className="header">
       <div className="header-content">
         <div className="header-left">
-          <img
-            src="/logo-black-1024x_refined(1)_light_lower_white.png"
-            alt="Logo"
-            className="header-logo"
-          />
+          <NavLink to="/" className="header-logo-link"> {/* Wrap logo in NavLink to go home */}
+            <img
+              src="/logo-black-1024x_refined(1)_light_lower_white.png"
+              alt="Logo"
+              className="header-logo"
+            />
+          </NavLink>
         </div>
         <nav className="header-nav">
+          <NavLink to="/data-visualizations" className="nav-link">
+            <span>Dashboard</span>
+          </NavLink>
+          <NavLink to="/analysis-guide" className="nav-link">
+            <span>Analysis Guide</span>
+          </NavLink>
           <a href="https://www.heliosenergy.io/" className="nav-link" target="_blank" rel="noopener noreferrer">
             <Globe size={18} />
             <span>Site</span>
