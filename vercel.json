@@ -3,6 +3,10 @@
     {
       "source": "/api/wfs/(.*)",
       "destination": "/api/wfs/[...path].ts"
+    },
+    {
+      "source": "/itu-proxy/(.*)",
+      "destination": "/api/wfs/[...path].ts"
     }
   ],
   "headers": [
