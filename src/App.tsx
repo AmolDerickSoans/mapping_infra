@@ -6,7 +6,6 @@ import './App.css';
 import type { PowerPlant } from './models/PowerPlant';
 import type { Cable } from './models/Cable';
 
-
 import { loadWfsCableData } from './utils/wfsDataLoader';
 import { loadAndProcessAllPowerPlants } from './utils/unifiedPowerPlantProcessor';
 import { isPointNearLine } from './utils/geoUtils';
@@ -20,7 +19,7 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import SidePanel from './components/SidePanel';
 import ProximityDialog from './components/ProximityDialog';
-import { Search, MapPin, X } from 'lucide-react';
+import { Search, MapPin, X, AlertTriangle } from 'lucide-react';
 
 // SizeByOption type as per MAP_FEATURES_DOCUMENTATION.md
 type SizeByOption = 'nameplate_capacity' | 'capacity_factor' | 'generation' | 'net_summer_capacity' | 'net_winter_capacity';
@@ -191,6 +190,11 @@ function App() {
         // Load WFS submarine cable data (unchanged)
         const wfsCableData = await loadWfsCableData();
 
+        // Add validation to check if we have sufficient data
+        if (powerPlantData.length < 500) {
+          console.warn(`Only loaded ${powerPlantData.length} power plants. This may indicate a data loading issue.`);
+        }
+
         setPowerPlants(powerPlantData);
         setWfsCables(wfsCableData);
 
@@ -210,11 +214,12 @@ function App() {
         const uniqueSources = new Set(powerPlantData.map(plant => plant.source));
         console.log('Unique sources in data:', Array.from(uniqueSources));
         setFilteredSources(new Set(Array.from(uniqueSources).filter(source => source !== 'other')));
- // Extract and set all unique statuses
- const statuses = new Set(powerPlantData.map(p => p.rawData?.statusDescription || 'N/A'));
- const sortedStatuses = Array.from(statuses).sort();
- setAllStatuses(sortedStatuses);
- setFilteredStatuses(new Set(sortedStatuses));
+        
+        // Extract and set all unique statuses
+        const statuses = new Set(powerPlantData.map(p => p.rawData?.statusDescription || 'N/A'));
+        const sortedStatuses = Array.from(statuses).sort();
+        setAllStatuses(sortedStatuses);
+        setFilteredStatuses(new Set(sortedStatuses));
       } catch (error) {
         console.error('Error loading data:', error);
       } finally {
@@ -405,6 +410,14 @@ function App() {
       {loading && (
         <div className="loading-indicator">
           Loading data...
+        </div>
+      )}
+      
+      {/* Data Warning Message */}
+      {!loading && powerPlants.length < 500 && (
+        <div className="data-warning">
+          <AlertTriangle size={20} />
+          <span>Warning: Only {powerPlants.length} power plants loaded. Data may be incomplete.</span>
         </div>
       )}
 

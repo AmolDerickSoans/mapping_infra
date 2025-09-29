@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
-import App from './App';
+import App from './App'; // This imports the default export, which is AppWrapper
 import DataVisualizations from './components/DataVisualizations';
 import AnalysisGuide from './pages/AnalysisGuide';
 

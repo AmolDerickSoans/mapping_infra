@@ -1,6 +1,5 @@
 import { CacheManager } from './cache';
 import { globalProgressIndicator } from './progressIndicator';
-import { loadLargeJsonData } from './streamingJsonParser';
 import type { PowerPlant } from '../models/PowerPlant';
 
 // Constants for caching
@@ -24,56 +23,37 @@ export async function loadEIADataEfficiently(): Promise<PowerPlant[]> {
       return cachedData;
     }
 
-    // If no valid cache, load from network
+    // If no valid cache, load from our new API endpoint
     globalProgressIndicator.update(10, 'Loading EIA data from network...');
     console.log('Loading EIA data from network');
     
-    const response = await fetch('/data/eia_aggregated_plant_capacity.json');
+    // Use our server-side API endpoint instead of loading the large JSON directly
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    const response = await fetch('/api/power-plants', {
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
-      throw new Error(`Failed to load EIA data: ${response.statusText}`);
+      throw new Error(`Failed to load EIA data: ${response.statusText} (${response.status})`);
     }
 
-    // Try streaming parser first for better memory efficiency
-    // Fall back to regular JSON parsing if streaming is not supported
-    let plants: PowerPlant[] = [];
+    // Parse the already processed data
+    globalProgressIndicator.update(50, 'Processing EIA data...');
+    const rawData = await response.json();
     
-    try {
-      // Use streaming parser for large JSON files
-      plants = [];
-      
-      await loadLargeJsonData(
-        '/data/eia_aggregated_plant_capacity.json',
-        (item, index) => {
-          // Update progress periodically
-          if (index % 1000 === 0) {
-            globalProgressIndicator.update(
-              30 + Math.min(40, (index / 10000) * 40), // Use 30-70% range for processing
-              `Processing plant ${index + 1}...`
-            );
-          }
-          
-          try {
-            const plant = transformEIAItemToPowerPlant(item);
-            if (plant) {
-              plants.push(plant);
-            }
-          } catch (error) {
-            console.warn('Error processing EIA plant entry:', error, item);
-          }
-          
-        }
-      );
-    } catch (streamingError) {
-      console.warn('Streaming parser failed, falling back to regular JSON parsing:', streamingError);
-      
-      // Fallback to regular JSON parsing
-      globalProgressIndicator.update(30, 'Parsing EIA data...');
-      const rawData = await response.json();
-      
-      globalProgressIndicator.update(50, 'Processing EIA data...');
-      plants = transformEIADataToPowerPlants(rawData);
+    // Add check for data integrity
+    if (!Array.isArray(rawData)) {
+      throw new Error('Invalid data format received from API');
     }
+    
+    console.log(`Received ${rawData.length} plants from API`);
+    
+    // Transform the data
+    const plants = transformEIADataToPowerPlants(rawData);
     
     // Update progress
     globalProgressIndicator.update(80, `Processed ${plants.length} plants, caching...`);
@@ -85,9 +65,25 @@ export async function loadEIADataEfficiently(): Promise<PowerPlant[]> {
     globalProgressIndicator.update(100, `Loaded ${plants.length} power plants`);
     
     return plants;
-  } catch (error) {
+  } catch (error: any) {
     globalProgressIndicator.update(0, 'Error loading data');
     console.error('Error loading EIA data efficiently:', error);
+    
+    // Try to load from fallback local data if available
+    try {
+      console.log('Attempting to load fallback data...');
+      const fallbackResponse = await fetch('/data/eia_aggregated_plant_capacity.json');
+      if (fallbackResponse.ok) {
+        const rawData = await fallbackResponse.json();
+        const plants = transformEIADataToPowerPlants(rawData);
+        cacheEIAData(plants);
+        globalProgressIndicator.update(100, `Loaded ${plants.length} power plants (fallback)`);
+        return plants;
+      }
+    } catch (fallbackError) {
+      console.error('Fallback data loading also failed:', fallbackError);
+    }
+    
     return []; // Return empty array as fallback
   }
 }
