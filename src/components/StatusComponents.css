@@ -150,39 +150,37 @@
   flex: 1;
 }
 
-/* Dark theme support */
-@media (prefers-color-scheme: dark) {
-  .selected-chips {
-    background-color: #333;
-    border-color: #555;
-  }
+/* Dark theme support - using class-based selectors instead of media queries */
+.dark .selected-chips {
+  background-color: #333;
+  border-color: #555;
+}
 
-  .status-chip {
-    background-color: #007bff;
-  }
+.dark .status-chip {
+  background-color: #007bff;
+}
 
-  .dropdown-trigger {
-    border-color: #007bff;
-    color: #007bff;
-  }
+.dark .dropdown-trigger {
+  border-color: #007bff;
+  color: #007bff;
+}
 
-  .status-dropdown {
-    background-color: #333;
-    border-color: #555;
-  }
+.dark .status-dropdown {
+  background-color: #333;
+  border-color: #555;
+}
 
-  .dropdown-header {
-    background-color: #444;
-    border-color: #555;
-  }
+.dark .dropdown-header {
+  background-color: #444;
+  border-color: #555;
+}
 
-  .dropdown-item {
-    border-color: #444;
-  }
+.dark .dropdown-item {
+  border-color: #444;
+}
 
-  .dropdown-item:hover {
-    background-color: #444;
-  }
+.dark .dropdown-item:hover {
+  background-color: #444;
 }
 
 /* Responsive adjustments */
