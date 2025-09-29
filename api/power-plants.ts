@@ -24,32 +24,69 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Read and process the JSON file efficiently
+    // Read and process the JSON file using streaming to handle large files
     const filePath = path.join(process.cwd(), 'public', 'data', 'eia_aggregated_plant_capacity.json');
-    
-    // Read file synchronously (blocking but simpler for this use case)
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    
-    // Parse JSON
-    const allPlants = JSON.parse(fileContent);
-    
-    // Process only operating plants to reduce data size
-    const processedPlants = allPlants
-      .filter((plant: any) => plant.status === 'OP') // Only operating plants
-      .map((plant: any) => ({
-        plantid: plant.plantid,
-        generatorid: plant.generatorid,
-        plantName: plant.plantName,
-        latitude: parseFloat(plant.latitude),
-        longitude: parseFloat(plant.longitude),
-        'nameplate-capacity-mw': parseFloat(plant['nameplate-capacity-mw']),
-        'net-summer-capacity-mw': parseFloat(plant['net-summer-capacity-mw']),
-        'net-winter-capacity-mw': parseFloat(plant['net-winter-capacity-mw']),
-        'energy-source-desc': plant['energy-source-desc'],
-        technology: plant.technology,
-        statusDescription: plant.statusDescription,
-        county: plant.county
-      }));
+
+    // Use streaming to process large JSON file
+    const fileStream = fs.createReadStream(filePath, { encoding: 'utf8' });
+    let buffer = '';
+    let inArray = false;
+    let bracketCount = 0;
+    let processedPlants: any[] = [];
+
+    // Process the stream
+    for await (const chunk of fileStream) {
+      buffer += chunk;
+
+      // Simple streaming parser for JSON array
+      let start = 0;
+      for (let i = 0; i < buffer.length; i++) {
+        const char = buffer[i];
+
+        if (char === '[' && !inArray) {
+          inArray = true;
+          bracketCount++;
+        } else if (char === '{') {
+          bracketCount++;
+        } else if (char === '}') {
+          bracketCount--;
+          if (bracketCount === 1 && inArray) {
+            // Found a complete object
+            const objStr = buffer.substring(start, i + 1);
+            try {
+              const plant = JSON.parse(objStr);
+              if (plant.status === 'OP') { // Only operating plants
+                processedPlants.push({
+                  plantid: plant.plantid,
+                  generatorid: plant.generatorid,
+                  plantName: plant.plantName,
+                  latitude: parseFloat(plant.latitude),
+                  longitude: parseFloat(plant.longitude),
+                  'nameplate-capacity-mw': parseFloat(plant['nameplate-capacity-mw']),
+                  'net-summer-capacity-mw': parseFloat(plant['net-summer-capacity-mw']),
+                  'net-winter-capacity-mw': parseFloat(plant['net-winter-capacity-mw']),
+                  'energy-source-desc': plant['energy-source-desc'],
+                  technology: plant.technology,
+                  statusDescription: plant.statusDescription,
+                  county: plant.county
+                });
+              }
+            } catch (e) {
+              // Skip invalid JSON objects
+            }
+            start = i + 1;
+          }
+        } else if (char === ']') {
+          bracketCount--;
+          if (bracketCount === 0) {
+            inArray = false;
+          }
+        }
+      }
+
+      // Keep only unprocessed part of buffer
+      buffer = buffer.substring(start);
+    }
 
     // Update cache
     cache = {
