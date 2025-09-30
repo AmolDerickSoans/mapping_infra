@@ -75,30 +75,28 @@ const CircleSizingControl: React.FC<CircleSizingControlProps> = ({
                 />
                 Nameplate Capacity
               </label>
-              <label className="flex items-center text-gray-500">
-                <input
-                  type="radio"
-                  name="sizeBy"
-                  value="capacityFactor"
-                  checked={sizeBy === 'capacityFactor'}
-                  onChange={(e) => setSizeBy(e.target.value)}
-                  className="mr-2"
-                  disabled
-                />
-                Capacity Factor (coming soon)
-              </label>
-              <label className="flex items-center text-gray-500">
-                <input
-                  type="radio"
-                  name="sizeBy"
-                  value="generation"
-                  checked={sizeBy === 'generation'}
-                  onChange={(e) => setSizeBy(e.target.value)}
-                  className="mr-2"
-                  disabled
-                />
-                Generation (coming soon)
-              </label>
+               <label className="flex items-center">
+                 <input
+                   type="radio"
+                   name="sizeBy"
+                   value="capacityFactor"
+                   checked={sizeBy === 'capacityFactor'}
+                   onChange={(e) => setSizeBy(e.target.value)}
+                   className="mr-2"
+                 />
+                 Capacity Factor
+               </label>
+               <label className="flex items-center">
+                 <input
+                   type="radio"
+                   name="sizeBy"
+                   value="generation"
+                   checked={sizeBy === 'generation'}
+                   onChange={(e) => setSizeBy(e.target.value)}
+                   className="mr-2"
+                 />
+                 Generation
+               </label>
             </div>
           </div>
         </div>

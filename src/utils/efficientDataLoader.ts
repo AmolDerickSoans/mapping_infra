@@ -72,7 +72,7 @@ export async function loadEIADataEfficiently(): Promise<PowerPlant[]> {
     // Try to load from fallback local data if available
     try {
       console.log('Attempting to load fallback data...');
-      const fallbackResponse = await fetch('/data/eia_aggregated_plant_capacity.json');
+      const fallbackResponse = await fetch('https://helios-dataanalysisbucket.s3.us-east-1.amazonaws.com/eia_aggregated_plant_capacity_with_generation.json');
       if (fallbackResponse.ok) {
         const rawData = await fallbackResponse.json();
         const plants = transformEIADataToPowerPlants(rawData);

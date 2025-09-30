@@ -34,6 +34,12 @@ interface SidePanelProps {
   // Power range limits
   powerRange: PowerRange;
 
+  // Capacity factor filtering
+  minCapacityFactor: number;
+  maxCapacityFactor: number;
+  onMinCapacityFactorChange: (value: number) => void;
+  onMaxCapacityFactorChange: (value: number) => void;
+
     // Proximity filtering
     showOnlyNearbyPlants: boolean;
     proximityDistance: number;
@@ -87,9 +93,13 @@ const SidePanel: React.FC<SidePanelProps> = ({
   onToggleAmericanPlants,
   minPowerOutput,
   maxPowerOutput,
-   onMinPowerOutputChange,
-   onMaxPowerOutputChange,
-   powerRange,
+    onMinPowerOutputChange,
+    onMaxPowerOutputChange,
+    powerRange,
+    minCapacityFactor,
+    maxCapacityFactor,
+    onMinCapacityFactorChange,
+    onMaxCapacityFactorChange,
 
     // Proximity
    showOnlyNearbyPlants,
@@ -155,30 +165,34 @@ const SidePanel: React.FC<SidePanelProps> = ({
     switch (activeTab) {
       case 'layers':
         return (
-          <LayersFiltersTab
-            showPowerPlants={showPowerPlants}
-            showWfsCables={showWfsCables}
-            onTogglePowerPlants={onTogglePowerPlants}
-            onToggleWfsCables={onToggleWfsCables}
-            allStatuses={allStatuses}
-            filteredStatuses={filteredStatuses}
-            onToggleStatusFilter={onToggleStatusFilter}
-            showCanadianPlants={showCanadianPlants}
-            showAmericanPlants={showAmericanPlants}
-            onToggleCanadianPlants={onToggleCanadianPlants}
-            onToggleAmericanPlants={onToggleAmericanPlants}
-            minPowerOutput={minPowerOutput}
-            maxPowerOutput={maxPowerOutput}
-            onMinPowerOutputChange={onMinPowerOutputChange}
-            onMaxPowerOutputChange={onMaxPowerOutputChange}
-            powerRange={powerRange}
-             showOnlyNearbyPlants={showOnlyNearbyPlants}
-             proximityDistance={proximityDistance}
-             onToggleNearbyPlants={onToggleNearbyPlants}
-             onProximityDistanceChange={onProximityDistanceChange}
-             proximityPlantCount={proximityPlantCount}
-             onOpenProximityDialog={onOpenProximityDialog}
-          />
+              <LayersFiltersTab
+                showPowerPlants={showPowerPlants}
+                showWfsCables={showWfsCables}
+                onTogglePowerPlants={onTogglePowerPlants}
+                onToggleWfsCables={onToggleWfsCables}
+                showCanadianPlants={showCanadianPlants}
+                showAmericanPlants={showAmericanPlants}
+                onToggleCanadianPlants={onToggleCanadianPlants}
+                onToggleAmericanPlants={onToggleAmericanPlants}
+                allStatuses={allStatuses}
+                filteredStatuses={filteredStatuses}
+                onToggleStatusFilter={onToggleStatusFilter}
+                minPowerOutput={minPowerOutput}
+                maxPowerOutput={maxPowerOutput}
+                onMinPowerOutputChange={onMinPowerOutputChange}
+                onMaxPowerOutputChange={onMaxPowerOutputChange}
+                powerRange={powerRange}
+                minCapacityFactor={minCapacityFactor}
+                maxCapacityFactor={maxCapacityFactor}
+                onMinCapacityFactorChange={onMinCapacityFactorChange}
+                onMaxCapacityFactorChange={onMaxCapacityFactorChange}
+                showOnlyNearbyPlants={showOnlyNearbyPlants}
+                proximityDistance={proximityDistance}
+                onToggleNearbyPlants={onToggleNearbyPlants}
+                onProximityDistanceChange={onProximityDistanceChange}
+                proximityPlantCount={proximityPlantCount}
+                onOpenProximityDialog={onOpenProximityDialog}
+              />
         );
 
        case 'legend':

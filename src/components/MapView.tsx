@@ -77,6 +77,9 @@ const MapView: React.FC = () => {
   // State for power output range filtering (0 MW to 10000 MW)
   const [minPowerOutput, setMinPowerOutput] = useState<number>(0);
   const [maxPowerOutput, setMaxPowerOutput] = useState<number>(10000);
+  // State for capacity factor range filtering (0% to 100%)
+  const [minCapacityFactor, setMinCapacityFactor] = useState<number>(0);
+  const [maxCapacityFactor, setMaxCapacityFactor] = useState<number>(100);
   // State for country filtering
   const [showCanadianPlants, setShowCanadianPlants] = useState<boolean>(true);
   const [showAmericanPlants, setShowAmericanPlants] = useState<boolean>(true);
@@ -105,6 +108,7 @@ const MapView: React.FC = () => {
      const [showSummerCapacity, setShowSummerCapacity] = useState<boolean>(false);
       // State for persistent tooltip
       const [isTooltipPersistent, setIsTooltipPersistent] = useState<boolean>(false);
+      const [persistentPlant, setPersistentPlant] = useState<PowerPlant | null>(null);
       // State for proximity dialog
       const [isProximityDialogOpen, setIsProximityDialogOpen] = useState<boolean>(false);
    // State for status filtering
@@ -381,19 +385,26 @@ const MapView: React.FC = () => {
          const normalized =
            sqrtMax > sqrtMin ? (sqrtValue - sqrtMin) / (sqrtMax - sqrtMin) : 0;
 
-         // Final radius: adjusted base size + increased emphasis factor for more variance
-         return sizeMultiplier * 2 + capacityWeight * normalized * 25;
+        // Exaggerate sizing for capacity_factor due to small variance
+        const exaggerationFactor = sizeByOption === 'capacity_factor' ? 5 : 1;
+        // Final radius: adjusted base size + increased emphasis factor for more variance
+        return sizeMultiplier * 2 + capacityWeight * normalized * 25 * exaggerationFactor;
        },
        updateTriggers: {
          getRadius: [sizeMultiplier, capacityWeight, sizeByOption, powerRange],
        },
        getFillColor: (d: PowerPlant) =>
          POWER_PLANT_COLORS[d.source] || POWER_PLANT_COLORS.other,
-       onHover: (info: { object?: PowerPlant }) => setHoverInfo(info.object || null),
+       onHover: (info: { object?: PowerPlant }) => {
+         // Always update hoverInfo with the hovered object or null
+         // The rendering logic will handle showing the persistent plant when needed
+         setHoverInfo(info.object || null);
+       },
         onClick: (info: { object?: PowerPlant }) => {
           if (info.object) {
             setHoverInfo(info.object);
             setIsTooltipPersistent(true);
+            setPersistentPlant(info.object);
           }
         },
      }),
@@ -463,9 +474,13 @@ const MapView: React.FC = () => {
          onToggleAmericanPlants={() => setShowAmericanPlants(!showAmericanPlants)}
          minPowerOutput={minPowerOutput}
          maxPowerOutput={maxPowerOutput}
-         onMinPowerOutputChange={setMinPowerOutput}
-         onMaxPowerOutputChange={setMaxPowerOutput}
-         powerRange={powerRange}
+          onMinPowerOutputChange={setMinPowerOutput}
+          onMaxPowerOutputChange={setMaxPowerOutput}
+          powerRange={powerRange}
+          minCapacityFactor={minCapacityFactor}
+          maxCapacityFactor={maxCapacityFactor}
+          onMinCapacityFactorChange={setMinCapacityFactor}
+          onMaxCapacityFactorChange={setMaxCapacityFactor}
           showOnlyNearbyPlants={showOnlyNearbyPlants}
           proximityDistance={proximityDistance}
           onToggleNearbyPlants={() => setShowOnlyNearbyPlants(!showOnlyNearbyPlants)}
@@ -503,7 +518,7 @@ const MapView: React.FC = () => {
         />
 
          {/* Unified Info Panel */}
-        {hoverInfo && (
+        {(hoverInfo || isTooltipPersistent) && (
           <div className="info-panel">
             {/* Close button only when persistent */}
             {isTooltipPersistent && (
@@ -512,69 +527,80 @@ const MapView: React.FC = () => {
                 onClick={() => {
                   setIsTooltipPersistent(false);
                   setHoverInfo(null);
+                  setPersistentPlant(null);
                 }}
                 aria-label="Close tooltip"
               >
                 <X size={16} />
               </button>
             )}
-
-             <h3>{hoverInfo.name}</h3>
-             <p>Output: {hoverInfo.outputDisplay}</p>
-             <p>Source: {hoverInfo.source}</p>
-             {hoverInfo.rawData?.technology && (
-               <p style={{ display: 'flex', alignItems: 'center' }}>
-                 Technology: {hoverInfo.rawData.technology}
-                 <span
-                   style={{
-                     display: 'inline-block',
-                     width: '10px',
-                     height: '10px',
-                     borderRadius: '50%',
-                     backgroundColor: `rgb(${POWER_PLANT_COLORS[hoverInfo.source]?.join(',') || '128,128,128'})`,
-                     marginLeft: '8px'
-                   }}
-                 ></span>
-               </p>
-             )}
-             {hoverInfo.netSummerCapacity && <p>Net Summer Capacity: {hoverInfo.netSummerCapacity.toFixed(1)} MW</p>}
-             {hoverInfo.netWinterCapacity && <p>Net Winter Capacity: {hoverInfo.netWinterCapacity.toFixed(1)} MW</p>}
-
-            {/* Additional details from rawData - shown when persistent */}
-            {isTooltipPersistent && hoverInfo.rawData && (
-              <>
-                {hoverInfo.rawData['City (Site Name)'] && <p>City: {hoverInfo.rawData['City (Site Name)']}</p>}
-                {hoverInfo.rawData['State / Province / Territory'] && <p>State/Province: {hoverInfo.rawData['State / Province / Territory']}</p>}
-                {hoverInfo.rawData['County'] && <p>County: {hoverInfo.rawData['County']}</p>}
-                {hoverInfo.rawData['Owner Name (Company)'] && <p>Owner: {hoverInfo.rawData['Owner Name (Company)']}</p>}
-                {hoverInfo.rawData['Operator Name'] && <p>Operator: {hoverInfo.rawData['Operator Name']}</p>}
-                {hoverInfo.rawData['Address'] && <p>Address: {hoverInfo.rawData['Address']}</p>}
-                {hoverInfo.rawData['Zip Code / Postal Code'] && <p>Postal Code: {hoverInfo.rawData['Zip Code / Postal Code']}</p>}
-                <p>Coordinates: {hoverInfo.coordinates[1].toFixed(4)}, {hoverInfo.coordinates[0].toFixed(4)}</p>
-
-                {/* CTA Buttons */}
-                <div className="cta-buttons">
-                  <button
-                    onClick={() => handleGoogleSearch(
-                      hoverInfo.name,
-                      hoverInfo.source,
-                      hoverInfo.rawData?.['Owner Name (Company)']
-                    )}
-                    aria-label={`Search for ${hoverInfo.name} powerplant on Google`}
-                  >
-                    <Search size={16} />
-                    View on Google
-                  </button>
-                  <button
-                    onClick={() => handleGoogleMaps(hoverInfo.coordinates)}
-                    aria-label={`View ${hoverInfo.name} location on Google Maps`}
-                  >
-                    <MapPin size={16} />
-                    View on Google Maps
-                  </button>
-                </div>
-              </>
-            )}
+            {((): React.ReactNode => {
+              // Show hovered plant if available (even if we're in persistent mode)
+              // Only show persistent plant when there's no hover
+              const plant = hoverInfo || persistentPlant;
+              if (!plant) return null;
+              
+              return (
+                <>
+                  <h3>{plant.name}</h3>
+                  <p>Output: {plant.outputDisplay}</p>
+                  <p>Source: {plant.source}</p>
+                  {plant.rawData?.technology && (
+                    <p style={{ display: 'flex', alignItems: 'center' }}>
+                      Technology: {plant.rawData.technology}
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          width: '10px',
+                          height: '10px',
+                          borderRadius: '50%',
+                          backgroundColor: `rgb(${POWER_PLANT_COLORS[plant.source]?.join(',') || '128,128,128'})`,
+                          marginLeft: '8px'
+                        }}
+                      ></span>
+                    </p>
+                  )}
+                  {plant.netSummerCapacity && <p>Net Summer Capacity: {plant.netSummerCapacity.toFixed(1)} MW</p>}
+                  {plant.netWinterCapacity && <p>Net Winter Capacity: {plant.netWinterCapacity.toFixed(1)} MW</p>}
+                  
+                  {/* Additional details from rawData - shown when persistent */}
+                  {isTooltipPersistent && plant.rawData && (
+                    <>
+                      {plant.rawData['City (Site Name)'] && <p>City: {plant.rawData['City (Site Name)']}</p>}
+                      {plant.rawData['State / Province / Territory'] && <p>State/Province: {plant.rawData['State / Province / Territory']}</p>}
+                      {plant.rawData['County'] && <p>County: {plant.rawData['County']}</p>}
+                      {plant.rawData['Owner Name (Company)'] && <p>Owner: {plant.rawData['Owner Name (Company)']}</p>}
+                      {plant.rawData['Operator Name'] && <p>Operator: {plant.rawData['Operator Name']}</p>}
+                      {plant.rawData['Address'] && <p>Address: {plant.rawData['Address']}</p>}
+                      {plant.rawData['Zip Code / Postal Code'] && <p>Postal Code: {plant.rawData['Zip Code / Postal Code']}</p>}
+                      <p>Coordinates: {plant.coordinates[1].toFixed(4)}, {plant.coordinates[0].toFixed(4)}</p>
+                      
+                      {/* CTA Buttons */}
+                      <div className="cta-buttons">
+                        <button
+                          onClick={() => handleGoogleSearch(
+                            plant.name,
+                            plant.source,
+                            plant.rawData?.['Owner Name (Company)']
+                          )}
+                          aria-label={`Search for ${plant.name} powerplant on Google`}
+                        >
+                          <Search size={16} />
+                          View on Google
+                        </button>
+                        <button
+                          onClick={() => handleGoogleMaps(plant.coordinates)}
+                          aria-label={`View ${plant.name} location on Google Maps`}
+                        >
+                          <MapPin size={16} />
+                          View on Google Maps
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </>
+              );
+            })()}
           </div>
         )}
      </div>

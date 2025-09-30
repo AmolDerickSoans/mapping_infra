@@ -11,7 +11,8 @@ const mockEIAData = {
         generatorid: 'CAL1',
         'nameplate-capacity-mw': '187',
         'net-summer-capacity-mw': '176',
-        'net-winter-capacity-mw': '195'
+        'net-winter-capacity-mw': '195',
+        'historical_avg_generation_mw': '150'
       },
       {
         period: '2024-12',
@@ -20,7 +21,8 @@ const mockEIAData = {
         generatorid: 'CAL2',
         'nameplate-capacity-mw': '100',
         'net-summer-capacity-mw': '95',
-        'net-winter-capacity-mw': '105'
+        'net-winter-capacity-mw': '105',
+        'historical_avg_generation_mw': '80'
       },
       {
         period: '2024-12',
@@ -29,7 +31,8 @@ const mockEIAData = {
         generatorid: 'GEN1',
         'nameplate-capacity-mw': '50',
         'net-summer-capacity-mw': '45',
-        'net-winter-capacity-mw': '55'
+        'net-winter-capacity-mw': '55',
+        'historical_avg_generation_mw': '40'
       }
     ]
   }
@@ -46,8 +49,8 @@ describe('Capacity Factor Calculator', () => {
     expect(calhoun).toBeDefined();
     expect(calhoun!.plant_name).toBe('Calhoun Energy Center');
     expect(calhoun!.capacity_mw).toBe(287); // 187 + 100
-    expect(calhoun!.capacity_factor).toBeNull(); // No generation data
-    expect(calhoun!.data_quality).toBe('insufficient_data');
+    expect(calhoun!.capacity_factor).toBeCloseTo(80.1, 1); // (150+80)/287 ≈ 0.801 * 100
+    expect(calhoun!.data_quality).toBe('complete');
     expect(calhoun!.net_summer_capacity_mw).toBe(271); // 176 + 95
     expect(calhoun!.net_winter_capacity_mw).toBe(300); // 195 + 105
     expect(calhoun!.generators_count).toBe(2);
@@ -56,7 +59,8 @@ describe('Capacity Factor Calculator', () => {
     const testPlant = results.find(r => r.plant_id === '12345');
     expect(testPlant).toBeDefined();
     expect(testPlant!.capacity_mw).toBe(50);
-    expect(testPlant!.data_quality).toBe('insufficient_data');
+    expect(testPlant!.capacity_factor).toBe(80); // 40/50 * 100
+    expect(testPlant!.data_quality).toBe('complete');
     expect(testPlant!.generators_count).toBe(1);
   });
 
@@ -71,7 +75,8 @@ describe('Capacity Factor Calculator', () => {
             generatorid: 'INV1',
             'nameplate-capacity-mw': '0', // Invalid capacity
             'net-summer-capacity-mw': '0',
-            'net-winter-capacity-mw': '0'
+            'net-winter-capacity-mw': '0',
+            'historical_avg_generation_mw': '10'
           }
         ]
       }

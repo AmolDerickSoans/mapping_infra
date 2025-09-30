@@ -1,6 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
-import * as fs from 'fs';
-import * as path from 'path';
+import { parseJsonArrayStream } from '../src/utils/streamingJsonParser';
 
 // Simple in-memory cache
 let cache: { data: any[]; timestamp: number } | null = null;
@@ -24,69 +23,42 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Read and process the JSON file using streaming to handle large files
-    const filePath = path.join(process.cwd(), 'public', 'data', 'eia_aggregated_plant_capacity.json');
+    // Fetch data from S3 (replace with your S3 URL)
+    const s3Url = process.env.EIA_DATA_S3_URL || 'https://your-s3-bucket.s3.amazonaws.com/eia_aggregated_plant_capacity.json';
+    const response = await fetch(s3Url);
 
-    // Use streaming to process large JSON file
-    const fileStream = fs.createReadStream(filePath, { encoding: 'utf8' });
-    let buffer = '';
-    let inArray = false;
-    let bracketCount = 0;
-    let processedPlants: any[] = [];
-
-    // Process the stream
-    for await (const chunk of fileStream) {
-      buffer += chunk;
-
-      // Simple streaming parser for JSON array
-      let start = 0;
-      for (let i = 0; i < buffer.length; i++) {
-        const char = buffer[i];
-
-        if (char === '[' && !inArray) {
-          inArray = true;
-          bracketCount++;
-        } else if (char === '{') {
-          bracketCount++;
-        } else if (char === '}') {
-          bracketCount--;
-          if (bracketCount === 1 && inArray) {
-            // Found a complete object
-            const objStr = buffer.substring(start, i + 1);
-            try {
-              const plant = JSON.parse(objStr);
-              if (plant.status === 'OP') { // Only operating plants
-                processedPlants.push({
-                  plantid: plant.plantid,
-                  generatorid: plant.generatorid,
-                  plantName: plant.plantName,
-                  latitude: parseFloat(plant.latitude),
-                  longitude: parseFloat(plant.longitude),
-                  'nameplate-capacity-mw': parseFloat(plant['nameplate-capacity-mw']),
-                  'net-summer-capacity-mw': parseFloat(plant['net-summer-capacity-mw']),
-                  'net-winter-capacity-mw': parseFloat(plant['net-winter-capacity-mw']),
-                  'energy-source-desc': plant['energy-source-desc'],
-                  technology: plant.technology,
-                  statusDescription: plant.statusDescription,
-                  county: plant.county
-                });
-              }
-            } catch (e) {
-              // Skip invalid JSON objects
-            }
-            start = i + 1;
-          }
-        } else if (char === ']') {
-          bracketCount--;
-          if (bracketCount === 0) {
-            inArray = false;
-          }
-        }
-      }
-
-      // Keep only unprocessed part of buffer
-      buffer = buffer.substring(start);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch data from S3: ${response.statusText}`);
     }
+
+    const processedPlants: any[] = [];
+
+    // Use streaming parser to process the data
+    await new Promise<void>((resolve, reject) => {
+      parseJsonArrayStream(
+        response,
+        (item: any) => {
+          if (item.status === 'OP') { // Only operating plants
+            processedPlants.push({
+              plantid: item.plantid,
+              generatorid: item.generatorid,
+              plantName: item.plantName,
+              latitude: parseFloat(item.latitude),
+              longitude: parseFloat(item.longitude),
+              'nameplate-capacity-mw': parseFloat(item['nameplate-capacity-mw']),
+              'net-summer-capacity-mw': parseFloat(item['net-summer-capacity-mw']),
+              'net-winter-capacity-mw': parseFloat(item['net-winter-capacity-mw']),
+              'energy-source-desc': item['energy-source-desc'],
+              technology: item.technology,
+              statusDescription: item.statusDescription,
+              county: item.county
+            });
+          }
+        },
+        () => resolve(),
+        reject
+      );
+    });
 
     // Update cache
     cache = {

@@ -28,6 +28,7 @@ const ProximityDialog: React.FC<ProximityDialogProps> = ({
       `=== Plant ${index + 1} ===
 Name: ${plant.name}
 Output: ${plant.outputDisplay}
+Capacity Factor: ${plant.capacityFactor ? `${plant.capacityFactor.toFixed(1)}%` : 'N/A'}
 Source: ${plant.source}
 Country: ${plant.country}
 Coordinates: ${plant.coordinates[1].toFixed(4)}, ${plant.coordinates[0].toFixed(4)}

@@ -34,6 +34,12 @@ interface LayersFiltersTabProps {
   // Power range limits
   powerRange: PowerRange;
 
+  // Capacity factor filtering
+  minCapacityFactor: number;
+  maxCapacityFactor: number;
+  onMinCapacityFactorChange: (value: number) => void;
+  onMaxCapacityFactorChange: (value: number) => void;
+
    // Proximity filtering
    showOnlyNearbyPlants: boolean;
    proximityDistance: number;
@@ -62,12 +68,16 @@ const LayersFiltersTab: React.FC<LayersFiltersTabProps> = ({
   onMinPowerOutputChange,
   onMaxPowerOutputChange,
   powerRange,
-   showOnlyNearbyPlants,
-   proximityDistance,
-   onToggleNearbyPlants,
-   onProximityDistanceChange,
-   proximityPlantCount,
-   onOpenProximityDialog,
+  minCapacityFactor,
+  maxCapacityFactor,
+  onMinCapacityFactorChange,
+  onMaxCapacityFactorChange,
+  showOnlyNearbyPlants,
+  proximityDistance,
+  onToggleNearbyPlants,
+  onProximityDistanceChange,
+  proximityPlantCount,
+  onOpenProximityDialog,
 }) => {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
@@ -89,12 +99,6 @@ const LayersFiltersTab: React.FC<LayersFiltersTabProps> = ({
     onMinPowerOutputChange(range.min);
     onMaxPowerOutputChange(range.max);
     setPowerRangePreset(preset);
-  };
-
-  const handleCustomPowerRangeChange = (min: number, max: number) => {
-    onMinPowerOutputChange(min);
-    onMaxPowerOutputChange(max);
-    setPowerRangePreset('custom');
   };
 
   // Determine active preset based on current values
@@ -326,8 +330,25 @@ const LayersFiltersTab: React.FC<LayersFiltersTabProps> = ({
                 min={powerRange.min}
                 max={powerRange.max}
                 value={[minPowerOutput, maxPowerOutput]}
-                onChange={(value) => handleCustomPowerRangeChange(value[0], value[1])}
+                onChange={([min, max]) => {
+                  onMinPowerOutputChange(min);
+                  onMaxPowerOutputChange(max);
+                }}
                 step={10}
+              />
+            </div>
+
+            <div className="filter-section">
+              <label className="filter-label">Capacity Factor (%)</label>
+              <DualRangeSlider
+                min={0}
+                max={100}
+                value={[minCapacityFactor, maxCapacityFactor]}
+                onChange={([min, max]) => {
+                  onMinCapacityFactorChange(min);
+                  onMaxCapacityFactorChange(max);
+                }}
+                step={1}
               />
             </div>
 

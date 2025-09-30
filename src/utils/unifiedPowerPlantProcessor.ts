@@ -101,7 +101,7 @@ interface EIADataEntry {
   [key: string]: string;
 }
 
-// Function to parse EIA data from eia_aggregated_plant_capacity.json for US power plants
+// Function to parse EIA data from S3-hosted eia_aggregated_plant_capacity_with_generation.json for US power plants
 export function parseEIAData(jsonData: EIADataEntry[]): PowerPlant[] {
   const plants: PowerPlant[] = [];
 

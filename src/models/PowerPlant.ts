@@ -10,6 +10,7 @@ export interface PowerPlant {
   generation?: number;
   netSummerCapacity?: number;
   netWinterCapacity?: number;
+  historicalAvgGeneration?: number;
   // Additional fields for hover panel
   rawData?: Record<string, string>; // Store all original CSV fields
 }

@@ -79,6 +79,9 @@ function App() {
   // State for power output range filtering (0 MW to 10000 MW)
   const [minPowerOutput, setMinPowerOutput] = useState<number>(0);
   const [maxPowerOutput, setMaxPowerOutput] = useState<number>(10000);
+  // State for capacity factor range filtering (0% to 100%)
+  const [minCapacityFactor, setMinCapacityFactor] = useState<number>(0);
+  const [maxCapacityFactor, setMaxCapacityFactor] = useState<number>(100);
   // State for country filtering
   const [showCanadianPlants, setShowCanadianPlants] = useState<boolean>(true);
   const [showAmericanPlants, setShowAmericanPlants] = useState<boolean>(true);
@@ -356,7 +359,7 @@ function App() {
             value = d.capacityFactor || d.output;
             break;
           case 'generation':
-            value = d.generation || d.output;
+            value = d.historicalAvgGeneration || d.generation || d.output;
             break;
           case 'net_summer_capacity':
             value = d.netSummerCapacity || d.output;
@@ -375,8 +378,10 @@ function App() {
         const normalized =
           sqrtMax > sqrtMin ? (sqrtValue - sqrtMin) / (sqrtMax - sqrtMin) : 0;
 
+        // Exaggerate sizing for capacity_factor due to small variance
+        const exaggerationFactor = sizeByOption === 'capacity_factor' ? 5 : 1;
         // Final radius: adjusted base size + increased emphasis factor for more variance
-        return sizeMultiplier * 2 + capacityWeight * normalized * 25;
+        return sizeMultiplier * 2 + capacityWeight * normalized * 25 * exaggerationFactor;
       },
       updateTriggers: {
         getRadius: [sizeMultiplier, capacityWeight, sizeByOption, powerRange],
@@ -457,9 +462,13 @@ function App() {
         onToggleAmericanPlants={() => setShowAmericanPlants(!showAmericanPlants)}
         minPowerOutput={minPowerOutput}
         maxPowerOutput={maxPowerOutput}
-        onMinPowerOutputChange={setMinPowerOutput}
-        onMaxPowerOutputChange={setMaxPowerOutput}
-        powerRange={powerRange}
+          onMinPowerOutputChange={setMinPowerOutput}
+          onMaxPowerOutputChange={setMaxPowerOutput}
+          powerRange={powerRange}
+          minCapacityFactor={minCapacityFactor}
+          maxCapacityFactor={maxCapacityFactor}
+          onMinCapacityFactorChange={setMinCapacityFactor}
+          onMaxCapacityFactorChange={setMaxCapacityFactor}
          showOnlyNearbyPlants={showOnlyNearbyPlants}
          proximityDistance={proximityDistance}
          onToggleNearbyPlants={() => setShowOnlyNearbyPlants(!showOnlyNearbyPlants)}

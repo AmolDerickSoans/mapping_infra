@@ -1,5 +1,5 @@
 // Capacity Factor Calculator Agent
-// Processes EIA power plant data from eia_aggregated_plant_capacity.json to calculate capacity factors
+// Processes EIA power plant data from S3-hosted eia_aggregated_plant_capacity_with_generation.json to calculate capacity factors
 // Note: Current data lacks generation information, so capacity factors cannot be calculated
 
 interface EIAData {
@@ -12,6 +12,7 @@ interface EIAData {
       'nameplate-capacity-mw': string;
       'net-summer-capacity-mw': string;
       'net-winter-capacity-mw': string;
+      'historical_avg_generation_mw': string;
       [key: string]: string;
     }>;
   };
@@ -29,10 +30,21 @@ interface CapacityFactorResult {
   generators_count: number;
 }
 
+interface PlantData {
+  plantName: string;
+  period: string;
+  totalHistoricalGeneration: number;
+  generators: Array<{
+    generatorid: string;
+    nameplateCapacity: number;
+    netSummerCapacity: number;
+    netWinterCapacity: number;
+  }>;
+}
+
 /**
- * Calculate capacity factor for a single generator
- * Formula: Capacity Factor = (Actual Generation) / (Nameplate Capacity × 720) × 100%
- * Since generation data is not available, returns null with insufficient_data status
+ * Calculate capacity factor for a plant
+ * Formula: Capacity Factor = (Average Generation MW) / (Nameplate Capacity MW) × 100%
  */
 function calculateGeneratorCapacityFactor(
   nameplateCapacity: number,
@@ -46,10 +58,8 @@ function calculateGeneratorCapacityFactor(
     return { capacityFactor: null, dataQuality: 'insufficient_data' };
   }
 
-  // Standard capacity factor calculation
-  const hoursInMonth = 720; // 24 hours/day × 30 days
-  const maxPossibleGeneration = nameplateCapacity * hoursInMonth;
-  const capacityFactor = (generation / maxPossibleGeneration) * 100;
+  // Capacity factor calculation using average MW
+  const capacityFactor = (generation / nameplateCapacity) * 100;
 
   return { capacityFactor, dataQuality: 'complete' };
 }
@@ -57,42 +67,27 @@ function calculateGeneratorCapacityFactor(
 /**
  * Aggregate data by plant ID
  */
-function aggregatePlantData(data: EIAData['response']['data']): Map<string, {
-  plantName: string;
-  period: string;
-  generators: Array<{
-    generatorid: string;
-    nameplateCapacity: number;
-    netSummerCapacity: number;
-    netWinterCapacity: number;
-  }>;
-}> {
-  const plantMap = new Map<string, {
-    plantName: string;
-    period: string;
-    generators: Array<{
-      generatorid: string;
-      nameplateCapacity: number;
-      netSummerCapacity: number;
-      netWinterCapacity: number;
-    }>;
-  }>();
+function aggregatePlantData(data: EIAData['response']['data']): Map<string, PlantData> {
+  const plantMap = new Map<string, PlantData>();
 
   for (const entry of data) {
     const plantId = entry.plantid;
     const nameplateCapacity = parseFloat(entry['nameplate-capacity-mw']) || 0;
     const netSummerCapacity = parseFloat(entry['net-summer-capacity-mw']) || 0;
     const netWinterCapacity = parseFloat(entry['net-winter-capacity-mw']) || 0;
+    const historicalGeneration = parseFloat(entry['historical_avg_generation_mw']) || 0;
 
     if (!plantMap.has(plantId)) {
       plantMap.set(plantId, {
         plantName: entry.plantName,
         period: entry.period,
+        totalHistoricalGeneration: 0,
         generators: []
       });
     }
 
     const plant = plantMap.get(plantId)!;
+    plant.totalHistoricalGeneration += historicalGeneration;
     plant.generators.push({
       generatorid: entry.generatorid,
       nameplateCapacity,
@@ -123,8 +118,8 @@ export function calculateCapacityFactors(jsonData: EIAData): CapacityFactorResul
       totalNetWinterCapacity += generator.netWinterCapacity;
     }
 
-    // Calculate capacity factor (will be insufficient_data since no generation)
-    const { capacityFactor, dataQuality } = calculateGeneratorCapacityFactor(totalNameplateCapacity);
+    // Calculate capacity factor using historical average generation
+    const { capacityFactor, dataQuality } = calculateGeneratorCapacityFactor(totalNameplateCapacity, plantData.totalHistoricalGeneration);
 
     const result: CapacityFactorResult = {
       plant_id: plantId,
@@ -145,11 +140,11 @@ export function calculateCapacityFactors(jsonData: EIAData): CapacityFactorResul
 }
 
 /**
- * Load and process eia_aggregated_plant_capacity.json file
+ * Load and process eia_aggregated_plant_capacity_with_generation.json file from S3
  */
 export async function processEIAData(): Promise<CapacityFactorResult[]> {
   try {
-    const response = await fetch('/data/eia_aggregated_plant_capacity.json');
+    const response = await fetch('https://helios-dataanalysisbucket.s3.us-east-1.amazonaws.com/eia_aggregated_plant_capacity_with_generation.json');
     if (!response.ok) {
       throw new Error(`Failed to load EIA data: ${response.statusText}`);
     }
